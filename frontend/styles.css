@@ -1,0 +1,266 @@
+:root {
+    --fondo: #f4f5f7;
+    --tarjeta: #ffffff;
+    --texto: #1c2430;
+    --texto-suave: #5b6675;
+    --borde: #d9dee5;
+    --primario: #1f5fbf;
+    --primario-oscuro: #184c99;
+    --ok: #1c7c44;
+    --ok-fondo: #e4f4ea;
+    --error: #b3261e;
+    --error-fondo: #fbe9e7;
+    --pendiente: #8a5a00;
+    --pendiente-fondo: #fff3d6;
+}
+
+* {
+    box-sizing: border-box;
+}
+
+body {
+    margin: 0;
+    background: var(--fondo);
+    color: var(--texto);
+    font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    line-height: 1.5;
+}
+
+.cabecera {
+    padding: 24px 16px 8px;
+    text-align: center;
+}
+
+.cabecera h1 {
+    margin: 0;
+    font-size: 1.5rem;
+}
+
+.estado {
+    margin: 4px 0 0;
+    font-size: 0.85rem;
+    color: var(--texto-suave);
+}
+
+.estado.ok {
+    color: var(--ok);
+}
+
+.estado.error {
+    color: var(--error);
+}
+
+main {
+    max-width: 760px;
+    margin: 0 auto;
+    padding: 16px;
+}
+
+.tarjeta {
+    background: var(--tarjeta);
+    border: 1px solid var(--borde);
+    border-radius: 10px;
+    padding: 20px;
+    margin-bottom: 16px;
+}
+
+#vista-acceso {
+    max-width: 420px;
+    margin: 0 auto;
+}
+
+.pestanas {
+    display: flex;
+    gap: 4px;
+    margin-bottom: 12px;
+}
+
+.pestana {
+    flex: 1;
+    border: 1px solid var(--borde);
+    background: transparent;
+    color: var(--texto-suave);
+}
+
+.pestana.activa {
+    background: var(--tarjeta);
+    color: var(--texto);
+    border-color: var(--primario);
+    font-weight: 600;
+}
+
+form label {
+    display: block;
+    margin-bottom: 14px;
+    font-size: 0.9rem;
+    font-weight: 600;
+}
+
+input,
+select {
+    display: block;
+    width: 100%;
+    margin-top: 4px;
+    padding: 9px 10px;
+    border: 1px solid var(--borde);
+    border-radius: 6px;
+    background: #fff;
+    color: var(--texto);
+    font: inherit;
+    font-weight: 400;
+}
+
+input:focus-visible,
+select:focus-visible,
+button:focus-visible {
+    outline: 2px solid var(--primario);
+    outline-offset: 2px;
+}
+
+small {
+    display: block;
+    margin-top: 4px;
+    color: var(--texto-suave);
+    font-weight: 400;
+}
+
+button {
+    padding: 9px 14px;
+    border: 1px solid var(--borde);
+    border-radius: 6px;
+    background: #fff;
+    color: var(--texto);
+    font: inherit;
+    cursor: pointer;
+}
+
+button:hover {
+    border-color: var(--texto-suave);
+}
+
+button:disabled {
+    opacity: 0.6;
+    cursor: wait;
+}
+
+button.principal {
+    width: 100%;
+    border-color: var(--primario);
+    background: var(--primario);
+    color: #fff;
+    font-weight: 600;
+}
+
+button.principal:hover {
+    background: var(--primario-oscuro);
+}
+
+.nota {
+    margin: 12px 0 0;
+    font-size: 0.85rem;
+    color: var(--texto-suave);
+}
+
+.aviso {
+    margin: 0 0 16px;
+    padding: 12px 14px;
+    border-radius: 8px;
+    white-space: pre-line;
+}
+
+.aviso.ok {
+    background: var(--ok-fondo);
+    color: var(--ok);
+}
+
+.aviso.error {
+    background: var(--error-fondo);
+    color: var(--error);
+}
+
+.fila-titulo {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 12px;
+}
+
+.fila-titulo h2 {
+    margin: 0;
+    font-size: 1.15rem;
+}
+
+.filtro {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin: 0;
+    font-size: 0.9rem;
+}
+
+.filtro select {
+    width: auto;
+    margin-top: 0;
+}
+
+.datos {
+    display: grid;
+    grid-template-columns: max-content 1fr;
+    gap: 6px 16px;
+    margin: 0;
+}
+
+.datos dt {
+    color: var(--texto-suave);
+}
+
+.datos dd {
+    margin: 0;
+    overflow-wrap: anywhere;
+}
+
+.tabla-contenedor {
+    overflow-x: auto;
+}
+
+table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.9rem;
+}
+
+th,
+td {
+    padding: 8px 10px;
+    border-bottom: 1px solid var(--borde);
+    text-align: left;
+    white-space: nowrap;
+}
+
+th {
+    color: var(--texto-suave);
+    font-weight: 600;
+}
+
+td:last-child {
+    text-align: right;
+}
+
+.etiqueta {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 999px;
+    font-size: 0.8rem;
+}
+
+.etiqueta.activo {
+    background: var(--ok-fondo);
+    color: var(--ok);
+}
+
+.etiqueta.inactivo {
+    background: var(--pendiente-fondo);
+    color: var(--pendiente);
+}
