@@ -17,7 +17,7 @@ return new class extends Migration
             $table->string('email')->unique();
             $table->string('password_hash');
             $table->enum('rol', ['admin', 'entrenador', 'consulta'])->default('entrenador');
-            $table->boolean('activo')->default(true);
+            $table->boolean('activo')->default(false);
             $table->timestamps();
         });
 
