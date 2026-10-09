@@ -53,6 +53,42 @@ php -S 127.0.0.1:8020 -t frontend
 - En <http://127.0.0.1:8020> se puede crear una cuenta, entrar con el administrador,
   aprobarla y entrar con ella.
 
+
+### Publicaciones
+
+La página de pruebas todavía no tiene pantalla de publicaciones, así que se prueban desde
+la consola del navegador con la función `api()` de `frontend/app.js`, que ya envía el
+token de la sesión.
+
+1. Entrar en <http://127.0.0.1:8020> con el administrador o con una cuenta aprobada.
+2. Abrir la consola del navegador (F12 → Consola).
+3. Ejecutar estas líneas una a una, cambiando `ID` por el `id` que devuelve al crear:
+
+   ```js
+   // Crear: devuelve la publicación con su id
+   await api('/posts', { metodo: 'POST', datos: { titulo: 'Rondo 4x2', contenido: 'Calentamiento', tipo: 'entrenamiento', visibilidad: 'todos' } })
+
+   // Listar (las publicaciones están en "data") y filtrar
+   await api('/posts')
+   await api('/posts?tipo=entrenamiento&q=rondo')
+
+   // Ver, editar y eliminar
+   await api('/posts/ID')
+   await api('/posts/ID', { metodo: 'PUT', datos: { titulo: 'Rondo 5x2' } })
+   await api('/posts/ID', { metodo: 'DELETE' })
+   ```
+
+Valores válidos: `tipo` = video, entrenamiento, tarea, jugada o recurso;
+`visibilidad` = entrenadores (por defecto) o todos.
+Filtros de `GET /posts`: `tipo`, `team_id`, `temporada`, `user_id` y `q` (busca en el título).
+
+Para comprobar los permisos, crear otra publicación, cerrar sesión, entrar con otro
+entrenador e intentar editarla o eliminarla: la API responde `403`. Una publicación que
+no existe responde `404`.
+
+También se puede probar con Postman o curl usando la tabla de la API de abajo y la
+cabecera `Authorization: Bearer TOKEN` (el token lo devuelve `POST /api/login`).
+
 ## API
 
 Todas las rutas empiezan por `/api`. Salvo las tres primeras, exigen la cabecera
