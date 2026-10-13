@@ -97,7 +97,8 @@ form label {
 }
 
 input,
-select {
+select,
+textarea {
     display: block;
     width: 100%;
     margin-top: 4px;
@@ -110,8 +111,13 @@ select {
     font-weight: 400;
 }
 
+textarea {
+    resize: vertical;
+}
+
 input:focus-visible,
 select:focus-visible,
+textarea:focus-visible,
 button:focus-visible {
     outline: 2px solid var(--primario);
     outline-offset: 2px;
@@ -253,6 +259,103 @@ td:last-child {
     padding: 2px 8px;
     border-radius: 999px;
     font-size: 0.8rem;
+}
+
+.etiqueta.tipo {
+    background: #e6eefb;
+    color: var(--primario-oscuro);
+}
+
+.form-post {
+    margin-bottom: 16px;
+    padding: 16px;
+    border: 1px solid var(--borde);
+    border-radius: 8px;
+    background: var(--fondo);
+}
+
+.form-post h3 {
+    margin: 0 0 12px;
+    font-size: 1rem;
+}
+
+.dos-columnas {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0 12px;
+}
+
+.botones {
+    display: flex;
+    gap: 8px;
+}
+
+.botones .principal {
+    width: auto;
+}
+
+.filtros {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 12px;
+}
+
+.filtros select {
+    width: auto;
+    margin-top: 0;
+}
+
+.filtros input {
+    margin-top: 0;
+}
+
+.post {
+    padding: 14px 0;
+    border-top: 1px solid var(--borde);
+}
+
+.post h3 {
+    margin: 0 0 4px;
+    font-size: 1rem;
+    overflow-wrap: anywhere;
+}
+
+.post-meta {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 6px 10px;
+    font-size: 0.85rem;
+    color: var(--texto-suave);
+}
+
+.post-contenido {
+    margin: 8px 0 0;
+    white-space: pre-line;
+    overflow-wrap: anywhere;
+}
+
+.post .botones {
+    margin-top: 10px;
+}
+
+.post .botones button {
+    padding: 5px 10px;
+    font-size: 0.85rem;
+}
+
+@media (max-width: 520px) {
+    .dos-columnas {
+        grid-template-columns: 1fr;
+    }
+
+    .filtros {
+        flex-direction: column;
+    }
+
+    .filtros select {
+        width: 100%;
+    }
 }
 
 .etiqueta.activo {
