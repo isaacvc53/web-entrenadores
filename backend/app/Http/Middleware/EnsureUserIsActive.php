@@ -9,7 +9,7 @@ use Symfony\Component\HttpFoundation\Response;
 class EnsureUserIsActive
 {
     /**
-     * Reject requests from accounts that are pending approval or deactivated.
+     * Rechaza las peticiones de cuentas pendientes de aprobación o desactivadas.
      */
     public function handle(Request $request, Closure $next): Response
     {

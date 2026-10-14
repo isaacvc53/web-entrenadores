@@ -9,7 +9,7 @@ use Illuminate\Auth\Access\Response;
 class PostPolicy
 {
     /**
-     * Read-only users can only see posts that are visible to everyone.
+     * Los usuarios de consulta solo ven las publicaciones visibles para todos.
      */
     public function view(User $user, Post $post): Response
     {
@@ -19,7 +19,7 @@ class PostPolicy
     }
 
     /**
-     * Coaches and admins can publish; read-only users cannot.
+     * Entrenadores y administradores pueden publicar; los usuarios de consulta no.
      */
     public function create(User $user): Response
     {
@@ -29,7 +29,7 @@ class PostPolicy
     }
 
     /**
-     * A post can be edited by its author or by an admin.
+     * Una publicación la puede editar su autor o un administrador.
      */
     public function update(User $user, Post $post): Response
     {
@@ -39,7 +39,7 @@ class PostPolicy
     }
 
     /**
-     * A post can be deleted by its author or by an admin.
+     * Una publicación la puede eliminar su autor o un administrador.
      */
     public function delete(User $user, Post $post): Response
     {

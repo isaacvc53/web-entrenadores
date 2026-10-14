@@ -10,7 +10,7 @@ use Illuminate\Http\Request;
 class UserController extends Controller
 {
     /**
-     * List users, optionally filtered by whether they are active.
+     * Lista los usuarios, con filtro opcional por si están activos.
      */
     public function index(Request $request): JsonResponse
     {
@@ -27,7 +27,7 @@ class UserController extends Controller
     }
 
     /**
-     * Approve an account so that its owner can log in.
+     * Aprueba una cuenta para que su dueño pueda iniciar sesión.
      */
     public function approve(Request $request, User $user): JsonResponse
     {
@@ -42,7 +42,7 @@ class UserController extends Controller
     }
 
     /**
-     * Deactivate an account and revoke all of its tokens.
+     * Desactiva una cuenta y anula todos sus tokens.
      */
     public function deactivate(Request $request, User $user): JsonResponse
     {
@@ -64,7 +64,7 @@ class UserController extends Controller
     }
 
     /**
-     * Record an administrative action on a user.
+     * Registra una acción administrativa sobre un usuario.
      */
     private function audit(Request $request, string $accion, User $user): void
     {

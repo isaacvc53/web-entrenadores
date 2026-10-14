@@ -14,7 +14,7 @@ use Illuminate\Validation\Rules\Password;
 class CrearAdmin extends Command
 {
     /**
-     * Execute the console command.
+     * Ejecuta el comando.
      */
     public function handle(): int
     {

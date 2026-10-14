@@ -9,14 +9,14 @@ use Illuminate\Database\Eloquent\Model;
 class AuditLog extends Model
 {
     /**
-     * The table associated with the model.
+     * La tabla asociada al modelo.
      *
      * @var string
      */
     protected $table = 'audit_log';
 
     /**
-     * The table only has a "fecha" column, filled in by the database.
+     * La tabla solo tiene la columna "fecha", que rellena la base de datos.
      *
      * @var bool
      */

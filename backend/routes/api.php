@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\AuthController;
+use App\Http\Controllers\MediaController;
 use App\Http\Controllers\PostController;
 use App\Http\Controllers\UserController;
 use App\Models\Post;
@@ -44,6 +45,10 @@ Route::middleware(['auth:sanctum', 'activo'])->group(function () {
     });
 
     Route::apiResource('posts', PostController::class);
+
+    Route::post('/media', [MediaController::class, 'store']);
+    Route::get('/media/{media}/download', [MediaController::class, 'download']);
+    Route::delete('/media/{media}', [MediaController::class, 'destroy']);
 
     Route::middleware('rol:admin')->group(function () {
         Route::get('/users', [UserController::class, 'index']);

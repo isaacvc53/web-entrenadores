@@ -12,7 +12,7 @@ use Illuminate\Validation\Rule;
 class PostController extends Controller
 {
     /**
-     * List the posts the user can see, newest first, with optional filters.
+     * Lista las publicaciones que el usuario puede ver, de la más reciente a la más antigua, con filtros opcionales.
      */
     public function index(Request $request): JsonResponse
     {
@@ -26,7 +26,7 @@ class PostController extends Controller
 
         $posts = Post::query()
             ->visiblePara($request->user())
-            ->with(['user:id,nombre', 'team:id,nombre,categoria'])
+            ->with(['user:id,nombre', 'team:id,nombre,categoria', 'media'])
             ->when($filtros['tipo'] ?? null, fn ($query, $tipo) => $query->where('tipo', $tipo))
             ->when($filtros['team_id'] ?? null, fn ($query, $teamId) => $query->where('team_id', $teamId))
             ->when($filtros['temporada'] ?? null, fn ($query, $temporada) => $query->where('temporada', $temporada))
@@ -40,7 +40,7 @@ class PostController extends Controller
     }
 
     /**
-     * Create a post owned by the authenticated user.
+     * Crea una publicación cuyo autor es el usuario conectado.
      */
     public function store(Request $request): JsonResponse
     {
@@ -56,7 +56,7 @@ class PostController extends Controller
     }
 
     /**
-     * Show a single post.
+     * Muestra una publicación.
      */
     public function show(Post $post): JsonResponse
     {
@@ -66,7 +66,7 @@ class PostController extends Controller
     }
 
     /**
-     * Update a post; only the fields that are sent are changed.
+     * Edita una publicación; solo cambian los campos que se envían.
      */
     public function update(Request $request, Post $post): JsonResponse
     {
@@ -78,7 +78,7 @@ class PostController extends Controller
     }
 
     /**
-     * Delete a post.
+     * Elimina una publicación.
      */
     public function destroy(Request $request, Post $post): JsonResponse
     {
@@ -99,7 +99,7 @@ class PostController extends Controller
     }
 
     /**
-     * Validation rules shared by store and update.
+     * Reglas de validación comunes a crear y editar.
      *
      * @return array<string, array<int, mixed>>
      */
@@ -119,6 +119,6 @@ class PostController extends Controller
 
     private function conRelaciones(Post $post): Post
     {
-        return $post->load(['user:id,nombre', 'team:id,nombre,categoria']);
+        return $post->load(['user:id,nombre', 'team:id,nombre,categoria', 'media']);
     }
 }

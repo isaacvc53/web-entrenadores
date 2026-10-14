@@ -12,12 +12,12 @@ use Illuminate\Support\Facades\Hash;
 class UserFactory extends Factory
 {
     /**
-     * The current password being used by the factory.
+     * La contraseña que usa la fábrica.
      */
     protected static ?string $password;
 
     /**
-     * Define the model's default state.
+     * Valores por defecto del modelo.
      *
      * @return array<string, mixed>
      */
@@ -33,7 +33,7 @@ class UserFactory extends Factory
     }
 
     /**
-     * Indicate that the user is an administrator.
+     * Indica que el usuario es administrador.
      */
     public function admin(): static
     {
@@ -43,7 +43,7 @@ class UserFactory extends Factory
     }
 
     /**
-     * Indicate that the user's account is pending approval.
+     * Indica que la cuenta está pendiente de aprobación.
      */
     public function pendiente(): static
     {

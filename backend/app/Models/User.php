@@ -19,14 +19,14 @@ class User extends Authenticatable
     use HasApiTokens, HasFactory, Notifiable;
 
     /**
-     * The column that stores the user's password hash.
+     * La columna que guarda el hash de la contraseña.
      *
      * @var string
      */
     protected $authPasswordName = 'password_hash';
 
     /**
-     * Get the attributes that should be cast.
+     * Conversiones de tipo de los atributos.
      *
      * @return array<string, string>
      */

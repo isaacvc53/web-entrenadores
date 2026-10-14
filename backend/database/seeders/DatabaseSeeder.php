@@ -11,7 +11,7 @@ class DatabaseSeeder extends Seeder
     use WithoutModelEvents;
 
     /**
-     * Seed the application's database.
+     * Rellena la base de datos con datos de prueba.
      */
     public function run(): void
     {

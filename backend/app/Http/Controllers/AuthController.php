@@ -11,7 +11,7 @@ use Illuminate\Validation\Rules\Password;
 class AuthController extends Controller
 {
     /**
-     * Register a new account, pending approval by an administrator.
+     * Registra una cuenta nueva, pendiente de que la apruebe un administrador.
      */
     public function register(Request $request): JsonResponse
     {
@@ -34,7 +34,7 @@ class AuthController extends Controller
     }
 
     /**
-     * Check the credentials and issue an API token.
+     * Comprueba las credenciales y entrega un token de la API.
      */
     public function login(Request $request): JsonResponse
     {
@@ -64,7 +64,7 @@ class AuthController extends Controller
     }
 
     /**
-     * Revoke the token used for the current request.
+     * Anula el token usado en esta petición.
      */
     public function logout(Request $request): JsonResponse
     {

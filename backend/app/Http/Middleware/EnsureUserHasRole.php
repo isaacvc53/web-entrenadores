@@ -9,7 +9,7 @@ use Symfony\Component\HttpFoundation\Response;
 class EnsureUserHasRole
 {
     /**
-     * Reject requests from users whose role is not one of the allowed ones.
+     * Rechaza las peticiones de usuarios cuyo rol no está entre los permitidos.
      */
     public function handle(Request $request, Closure $next, string ...$roles): Response
     {
