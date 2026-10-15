@@ -8,8 +8,10 @@ vídeos, sesiones de entrenamiento, documentos, tareas, jugadas y enlaces útile
 ```
 backend/     API REST (PHP / Laravel)
 frontend/    Página de pruebas (HTML + CSS + JS)
-storage/     Archivos subidos (fuera de la base de datos, no se versionan)
 ```
+
+Los archivos subidos se guardan en `backend/storage/app/private`, fuera de la base de datos
+y sin acceso directo desde internet. No se versionan.
 
 ## Instalación
 
@@ -54,37 +56,20 @@ php -S 127.0.0.1:8020 -t frontend
   aprobarla y entrar con ella.
 
 
-### Publicaciones
+### Publicaciones y adjuntos
 
-La página de pruebas todavía no tiene pantalla de publicaciones, así que se prueban desde
-la consola del navegador con la función `api()` de `frontend/app.js`, que ya envía el
-token de la sesión.
+Con una cuenta aprobada, en la tarjeta «Publicaciones»:
 
-1. Entrar en <http://127.0.0.1:8020> con el administrador o con una cuenta aprobada.
-2. Abrir la consola del navegador (F12 → Consola).
-3. Ejecutar estas líneas una a una, cambiando `ID` por el `id` que devuelve al crear:
-
-   ```js
-   // Crear: devuelve la publicación con su id
-   await api('/posts', { metodo: 'POST', datos: { titulo: 'Rondo 4x2', contenido: 'Calentamiento', tipo: 'entrenamiento', visibilidad: 'todos' } })
-
-   // Listar (las publicaciones están en "data") y filtrar
-   await api('/posts')
-   await api('/posts?tipo=entrenamiento&q=rondo')
-
-   // Ver, editar y eliminar
-   await api('/posts/ID')
-   await api('/posts/ID', { metodo: 'PUT', datos: { titulo: 'Rondo 5x2' } })
-   await api('/posts/ID', { metodo: 'DELETE' })
-   ```
+1. «Nueva publicación»: título, tipo, quién puede verla, equipo, temporada y contenido.
+2. En el mismo formulario se pueden adjuntar imágenes (JPG, PNG o WebP) y PDF, hasta 10 MB
+   cada uno, y un enlace de YouTube. Máximo 10 adjuntos por publicación.
+3. La lista se puede filtrar por tipo y buscar por título.
+4. El autor o un administrador pueden editar, eliminar y quitar adjuntos. Los demás solo
+   pueden verlos.
 
 Valores válidos: `tipo` = video, entrenamiento, tarea, jugada o recurso;
 `visibilidad` = entrenadores (por defecto) o todos.
 Filtros de `GET /posts`: `tipo`, `team_id`, `temporada`, `user_id` y `q` (busca en el título).
-
-Para comprobar los permisos, crear otra publicación, cerrar sesión, entrar con otro
-entrenador e intentar editarla o eliminarla: la API responde `403`. Una publicación que
-no existe responde `404`.
 
 También se puede probar con Postman o curl usando la tabla de la API de abajo y la
 cabecera `Authorization: Bearer TOKEN` (el token lo devuelve `POST /api/login`).
@@ -107,6 +92,9 @@ Todas las rutas empiezan por `/api`. Salvo las tres primeras, exigen la cabecera
 | GET | `/posts/{id}` | Ver una publicación |
 | PUT | `/posts/{id}` | Editarla (su autor o un administrador) |
 | DELETE | `/posts/{id}` | Eliminarla (su autor o un administrador) |
+| POST | `/media` | Adjuntar a una publicación un archivo (`archivo`) o un enlace de YouTube (`url`), junto con `post_id` |
+| GET | `/media/{id}/download` | Descargar un archivo, si se puede ver su publicación |
+| DELETE | `/media/{id}` | Quitar un adjunto (su autor o un administrador) |
 | GET | `/users` | Listar usuarios (administrador) |
 | PUT | `/users/{id}/approve` | Aprobar una cuenta (administrador) |
 | PUT | `/users/{id}/deactivate` | Desactivar una cuenta (administrador) |
@@ -116,4 +104,6 @@ Todas las rutas empiezan por `/api`. Salvo las tres primeras, exigen la cabecera
 - Contraseñas con hash seguro, nunca en texto plano.
 - Permisos comprobados siempre en el backend.
 - Las cuentas nuevas no pueden entrar hasta que un administrador las aprueba.
+- Los archivos se validan por tamaño y por su contenido real, se guardan con un nombre
+  aleatorio y solo se descargan a través de la API, comprobando los permisos.
 - Secretos en `.env`, nunca en el repositorio.

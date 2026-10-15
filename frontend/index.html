@@ -110,6 +110,15 @@
                         Contenido
                         <textarea name="contenido" rows="5"></textarea>
                     </label>
+                    <label>
+                        Archivos
+                        <input type="file" name="archivos" multiple accept=".jpg,.jpeg,.png,.webp,.pdf">
+                        <small>Imágenes (JPG, PNG o WebP) o PDF, hasta 10 MB cada uno. Máximo 10 adjuntos por publicación.</small>
+                    </label>
+                    <label>
+                        Enlace de YouTube
+                        <input type="url" name="enlace" placeholder="https://www.youtube.com/watch?v=…">
+                    </label>
                     <div class="botones">
                         <button type="submit" class="principal" id="boton-guardar-post">Publicar</button>
                         <button type="button" id="boton-cancelar-post">Cancelar</button>

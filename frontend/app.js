@@ -5,19 +5,26 @@ const CLAVE_TOKEN = 'portal_token';
 
 const $ = (id) => document.getElementById(id);
 
+// Tamaño máximo de un adjunto; el backend aplica el mismo límite.
+const MAX_BYTES_ADJUNTO = 10 * 1024 * 1024;
+
 let usuario = null;
 let postEditando = null;
+let urlsDeAdjuntos = [];
 
 // --- Llamadas a la API ---
 
-async function api(ruta, { metodo = 'GET', datos } = {}) {
+// Hace la petición con el token y lanza ErrorApi si la respuesta no es correcta.
+// Acepta datos en JSON o un FormData (para subir archivos).
+async function peticion(ruta, { metodo = 'GET', datos } = {}) {
     const cabeceras = { Accept: 'application/json' };
     const token = sessionStorage.getItem(CLAVE_TOKEN);
+    const esFormulario = datos instanceof FormData;
 
     if (token) {
         cabeceras.Authorization = `Bearer ${token}`;
     }
-    if (datos) {
+    if (datos && !esFormulario) {
         cabeceras['Content-Type'] = 'application/json';
     }
 
@@ -26,19 +33,30 @@ async function api(ruta, { metodo = 'GET', datos } = {}) {
         respuesta = await fetch(API + ruta, {
             method: metodo,
             headers: cabeceras,
-            body: datos ? JSON.stringify(datos) : undefined,
+            body: datos ? (esFormulario ? datos : JSON.stringify(datos)) : undefined,
         });
     } catch {
         throw new ErrorApi(0, 'No se pudo conectar con la API. ¿Está arrancado el backend?');
     }
 
-    const cuerpo = await respuesta.json().catch(() => ({}));
-
     if (!respuesta.ok) {
+        const cuerpo = await respuesta.json().catch(() => ({}));
         throw new ErrorApi(respuesta.status, mensajeDeError(respuesta.status, cuerpo));
     }
 
-    return cuerpo;
+    return respuesta;
+}
+
+async function api(ruta, opciones) {
+    const respuesta = await peticion(ruta, opciones);
+
+    return respuesta.json().catch(() => ({}));
+}
+
+async function descargarAdjunto(media) {
+    const respuesta = await peticion(`/media/${media.id}/download`);
+
+    return respuesta.blob();
 }
 
 class ErrorApi extends Error {
@@ -75,6 +93,7 @@ function limpiarAviso() {
 
 function mostrarAcceso() {
     usuario = null;
+    liberarAdjuntos();
     $('lista-posts').replaceChildren();
     $('vista-sesion').hidden = true;
     $('vista-acceso').hidden = false;
@@ -259,6 +278,7 @@ async function cargarPosts() {
         const consulta = parametros.toString();
         const respuesta = await api('/posts' + (consulta ? `?${consulta}` : ''));
 
+        liberarAdjuntos();
         $('lista-posts').replaceChildren(...respuesta.data.map(tarjetaDePost));
         $('sin-posts').hidden = respuesta.data.length > 0;
         $('mas-posts').hidden = respuesta.total <= respuesta.data.length;
@@ -304,7 +324,14 @@ function tarjetaDePost(post) {
         tarjeta.append(contenido);
     }
 
-    if (usuario.rol === 'admin' || post.user_id === usuario.id) {
+    if (post.media?.length) {
+        const adjuntos = document.createElement('div');
+        adjuntos.className = 'adjuntos';
+        adjuntos.append(...post.media.map((media) => elementoDeAdjunto(media, puedeGestionar(post))));
+        tarjeta.append(adjuntos);
+    }
+
+    if (puedeGestionar(post)) {
         const editar = document.createElement('button');
         editar.type = 'button';
         editar.textContent = 'Editar';
@@ -322,6 +349,151 @@ function tarjetaDePost(post) {
     }
 
     return tarjeta;
+}
+
+function puedeGestionar(post) {
+    return usuario.rol === 'admin' || post.user_id === usuario.id;
+}
+
+// --- Adjuntos ---
+
+function elementoDeAdjunto(media, gestionable) {
+    const caja = document.createElement('div');
+    caja.className = `adjunto ${media.tipo}`;
+
+    if (media.tipo === 'youtube') {
+        const video = document.createElement('iframe');
+        video.src = `https://www.youtube-nocookie.com/embed/${encodeURIComponent(media.youtube_id)}`;
+        video.title = 'Vídeo de YouTube';
+        video.loading = 'lazy';
+        video.allow = 'accelerometer; clipboard-write; encrypted-media; gyroscope; picture-in-picture';
+        video.allowFullscreen = true;
+        video.referrerPolicy = 'strict-origin-when-cross-origin';
+        caja.append(video);
+    } else if (media.tipo === 'imagen') {
+        // Un <img> normal no envía el token, así que la imagen se descarga con él
+        // y se muestra desde una URL local del navegador.
+        const enlace = document.createElement('a');
+        enlace.target = '_blank';
+        enlace.rel = 'noopener';
+        const imagen = document.createElement('img');
+        imagen.alt = media.nombre_original ?? 'Imagen adjunta';
+        enlace.append(imagen);
+        caja.append(enlace);
+
+        descargarAdjunto(media)
+            .then((blob) => {
+                const url = URL.createObjectURL(blob);
+                urlsDeAdjuntos.push(url);
+                imagen.src = url;
+                enlace.href = url;
+            })
+            .catch(() => {
+                imagen.alt = 'No se pudo cargar la imagen';
+            });
+    } else {
+        const archivo = document.createElement('button');
+        archivo.type = 'button';
+        archivo.className = 'archivo';
+        archivo.textContent = `${media.nombre_original} (${tamanoLegible(media.tamano)})`;
+        archivo.addEventListener('click', () => guardarAdjunto(media, archivo));
+        caja.append(archivo);
+    }
+
+    if (gestionable) {
+        const quitar = document.createElement('button');
+        quitar.type = 'button';
+        quitar.className = 'quitar';
+        quitar.textContent = 'Quitar';
+        quitar.addEventListener('click', () => quitarAdjunto(media, quitar));
+        caja.append(quitar);
+    }
+
+    return caja;
+}
+
+function tamanoLegible(bytes) {
+    return bytes < 1024 * 1024
+        ? `${Math.max(1, Math.round(bytes / 1024))} KB`
+        : `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
+
+async function guardarAdjunto(media, boton) {
+    boton.disabled = true;
+
+    try {
+        const url = URL.createObjectURL(await descargarAdjunto(media));
+        const enlace = document.createElement('a');
+        enlace.href = url;
+        enlace.download = media.nombre_original ?? 'archivo';
+        enlace.click();
+        setTimeout(() => URL.revokeObjectURL(url), 1000);
+    } catch (error) {
+        avisar(error.message, 'error');
+    } finally {
+        boton.disabled = false;
+    }
+}
+
+async function quitarAdjunto(media, boton) {
+    if (!confirm('¿Quitar este adjunto?')) {
+        return;
+    }
+
+    boton.disabled = true;
+    limpiarAviso();
+
+    try {
+        const respuesta = await api(`/media/${media.id}`, { metodo: 'DELETE' });
+
+        avisar(respuesta.message);
+        await cargarPosts();
+    } catch (error) {
+        avisar(error.message, 'error');
+        boton.disabled = false;
+    }
+}
+
+// Sube los archivos y el enlace de una publicación ya guardada.
+// Devuelve la lista de los que no se pudieron añadir, con el motivo.
+async function subirAdjuntos(postId, archivos, enlace) {
+    const fallos = [];
+
+    for (const archivo of archivos) {
+        if (archivo.size > MAX_BYTES_ADJUNTO) {
+            fallos.push(`${archivo.name}: supera los 10 MB.`);
+            continue;
+        }
+
+        const datos = new FormData();
+        datos.append('post_id', postId);
+        datos.append('archivo', archivo);
+
+        try {
+            await api('/media', { metodo: 'POST', datos });
+        } catch (error) {
+            fallos.push(`${archivo.name}: ${error.message}`);
+        }
+    }
+
+    if (enlace) {
+        const datos = new FormData();
+        datos.append('post_id', postId);
+        datos.append('url', enlace);
+
+        try {
+            await api('/media', { metodo: 'POST', datos });
+        } catch (error) {
+            fallos.push(`Enlace de YouTube: ${error.message}`);
+        }
+    }
+
+    return fallos;
+}
+
+function liberarAdjuntos() {
+    urlsDeAdjuntos.forEach((url) => URL.revokeObjectURL(url));
+    urlsDeAdjuntos = [];
 }
 
 function abrirFormPost(post = null) {
@@ -354,23 +526,29 @@ function cerrarFormPost() {
 }
 
 async function guardarPost(datos) {
+    const { archivos: _archivos, enlace = '', ...campos } = datos;
+    const archivos = [...$('form-post').archivos.files];
     const cuerpo = {
-        ...datos,
-        contenido: datos.contenido.trim() || null,
-        temporada: datos.temporada.trim() || null,
-        team_id: datos.team_id ? Number(datos.team_id) : null,
+        ...campos,
+        contenido: campos.contenido.trim() || null,
+        temporada: campos.temporada.trim() || null,
+        team_id: campos.team_id ? Number(campos.team_id) : null,
     };
 
-    if (postEditando) {
-        await api(`/posts/${postEditando.id}`, { metodo: 'PUT', datos: cuerpo });
-        avisar('Publicación actualizada.');
-    } else {
-        await api('/posts', { metodo: 'POST', datos: cuerpo });
-        avisar('Publicación creada.');
-    }
+    const post = postEditando
+        ? await api(`/posts/${postEditando.id}`, { metodo: 'PUT', datos: cuerpo })
+        : await api('/posts', { metodo: 'POST', datos: cuerpo });
+    const mensaje = postEditando ? 'Publicación actualizada' : 'Publicación creada';
+    const fallos = await subirAdjuntos(post.id, archivos, enlace.trim());
 
     cerrarFormPost();
     await cargarPosts();
+
+    if (fallos.length) {
+        avisar(`${mensaje}, pero no se pudo añadir:\n${fallos.join('\n')}`, 'error');
+    } else {
+        avisar(`${mensaje}.`);
+    }
 }
 
 async function eliminarPost(post, boton) {

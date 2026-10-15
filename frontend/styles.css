@@ -344,6 +344,57 @@ td:last-child {
     font-size: 0.85rem;
 }
 
+.adjuntos {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-start;
+    gap: 10px;
+    margin-top: 10px;
+}
+
+.adjunto {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 4px;
+    max-width: 100%;
+}
+
+.adjunto.youtube {
+    flex-basis: 100%;
+}
+
+.adjunto iframe {
+    display: block;
+    width: 100%;
+    aspect-ratio: 16 / 9;
+    border: 0;
+    border-radius: 8px;
+    background: var(--fondo);
+}
+
+.adjunto img {
+    display: block;
+    width: 120px;
+    height: 90px;
+    object-fit: cover;
+    border: 1px solid var(--borde);
+    border-radius: 6px;
+    background: var(--fondo);
+}
+
+.adjunto .archivo {
+    max-width: 100%;
+    text-align: left;
+    overflow-wrap: anywhere;
+}
+
+.adjunto .quitar {
+    padding: 2px 8px;
+    font-size: 0.8rem;
+    color: var(--error);
+}
+
 @media (max-width: 520px) {
     .dos-columnas {
         grid-template-columns: 1fr;

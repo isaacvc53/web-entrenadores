@@ -12,10 +12,6 @@ dist/
 build/
 .svelte-kit/
 
-# Archivos subidos (se conservan solo las carpetas)
-storage/uploads/*
-!storage/uploads/.gitkeep
-
 # Logs y temporales
 *.log
 logs/
