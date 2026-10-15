@@ -395,7 +395,67 @@ td:last-child {
     color: var(--error);
 }
 
+.comentarios {
+    margin-top: 10px;
+    padding: 12px;
+    border-radius: 8px;
+    background: var(--fondo);
+}
+
+.lista-comentarios {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+.comentario {
+    padding: 8px 0;
+    border-bottom: 1px solid var(--borde);
+}
+
+.comentario p {
+    margin: 4px 0 0;
+    white-space: pre-line;
+    overflow-wrap: anywhere;
+}
+
+.comentario.oculto {
+    opacity: 0.65;
+}
+
+.acciones-comentario {
+    display: flex;
+    gap: 6px;
+    margin-top: 6px;
+}
+
+.acciones-comentario button {
+    padding: 2px 8px;
+    font-size: 0.8rem;
+}
+
+.form-comentario {
+    display: flex;
+    align-items: flex-end;
+    gap: 8px;
+    margin-top: 10px;
+}
+
+.form-comentario textarea {
+    margin-top: 0;
+}
+
+.form-comentario .principal {
+    width: auto;
+    flex-shrink: 0;
+}
+
 @media (max-width: 520px) {
+    .form-comentario {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
     .dos-columnas {
         grid-template-columns: 1fr;
     }

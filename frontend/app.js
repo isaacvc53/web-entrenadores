@@ -331,6 +331,18 @@ function tarjetaDePost(post) {
         tarjeta.append(adjuntos);
     }
 
+    const comentarios = seccionDeComentarios(post);
+
+    const verComentarios = document.createElement('button');
+    verComentarios.type = 'button';
+    verComentarios.setAttribute('aria-expanded', 'false');
+    ponerContador(verComentarios, post.comentarios_count ?? 0);
+    verComentarios.addEventListener('click', () => alternarComentarios(post, comentarios, verComentarios));
+
+    const botones = document.createElement('div');
+    botones.className = 'botones';
+    botones.append(verComentarios);
+
     if (puedeGestionar(post)) {
         const editar = document.createElement('button');
         editar.type = 'button';
@@ -342,13 +354,187 @@ function tarjetaDePost(post) {
         eliminar.textContent = 'Eliminar';
         eliminar.addEventListener('click', () => eliminarPost(post, eliminar));
 
-        const botones = document.createElement('div');
-        botones.className = 'botones';
         botones.append(editar, eliminar);
-        tarjeta.append(botones);
     }
 
+    tarjeta.append(botones, comentarios);
+
     return tarjeta;
+}
+
+// --- Comentarios ---
+
+function ponerContador(boton, total) {
+    boton.dataset.total = total;
+    boton.textContent = `Comentarios (${total})`;
+}
+
+function seccionDeComentarios(post) {
+    const seccion = document.createElement('section');
+    seccion.className = 'comentarios';
+    seccion.hidden = true;
+
+    const lista = document.createElement('ul');
+    lista.className = 'lista-comentarios';
+
+    const vacio = document.createElement('p');
+    vacio.className = 'nota';
+    vacio.textContent = 'Todavía no hay comentarios.';
+    vacio.hidden = true;
+
+    seccion.append(lista, vacio);
+
+    // El rol de consulta puede leer, pero no comentar.
+    if (usuario.rol !== 'consulta') {
+        const formulario = document.createElement('form');
+        formulario.className = 'form-comentario';
+        formulario.noValidate = true;
+
+        const texto = document.createElement('textarea');
+        texto.name = 'contenido';
+        texto.rows = 2;
+        texto.maxLength = 2000;
+        texto.placeholder = 'Escribe un comentario';
+        texto.setAttribute('aria-label', 'Comentario');
+
+        const enviarBoton = document.createElement('button');
+        enviarBoton.type = 'submit';
+        enviarBoton.className = 'principal';
+        enviarBoton.textContent = 'Comentar';
+
+        formulario.append(texto, enviarBoton);
+        formulario.addEventListener('submit', (evento) => {
+            evento.preventDefault();
+            enviar(formulario, (datos) => comentar(post, seccion, datos));
+        });
+        seccion.append(formulario);
+    }
+
+    return seccion;
+}
+
+async function alternarComentarios(post, seccion, boton) {
+    const abrir = seccion.hidden;
+
+    seccion.hidden = !abrir;
+    boton.setAttribute('aria-expanded', String(abrir));
+
+    if (abrir) {
+        await cargarComentarios(post, seccion);
+    }
+}
+
+async function cargarComentarios(post, seccion) {
+    try {
+        const comentarios = await api(`/posts/${post.id}/comments`);
+        const visibles = comentarios.filter((c) => !c.moderado).length;
+
+        seccion.querySelector('.lista-comentarios').replaceChildren(
+            ...comentarios.map((c) => elementoDeComentario(c, post, seccion)),
+        );
+        seccion.querySelector('.nota').hidden = comentarios.length > 0;
+        // El botón "Comentarios (N)" es el primero de la fila de botones que va justo antes.
+        ponerContador(seccion.previousElementSibling.firstElementChild, visibles);
+    } catch (error) {
+        avisar(error.message, 'error');
+    }
+}
+
+function elementoDeComentario(comentario, post, seccion) {
+    const elemento = document.createElement('li');
+    elemento.className = comentario.moderado ? 'comentario oculto' : 'comentario';
+
+    const cabecera = document.createElement('div');
+    cabecera.className = 'post-meta';
+
+    const autor = document.createElement('strong');
+    autor.textContent = comentario.user?.nombre ?? 'Usuario';
+
+    const fecha = document.createElement('span');
+    fecha.textContent = new Date(comentario.created_at).toLocaleString('es-ES', {
+        dateStyle: 'short',
+        timeStyle: 'short',
+    });
+
+    cabecera.append(autor, fecha);
+
+    if (comentario.moderado) {
+        const marca = document.createElement('span');
+        marca.className = 'etiqueta inactivo';
+        marca.textContent = 'Oculto';
+        cabecera.append(marca);
+    }
+
+    const texto = document.createElement('p');
+    texto.textContent = comentario.contenido;
+
+    elemento.append(cabecera, texto);
+
+    const esAdmin = usuario.rol === 'admin';
+    const acciones = document.createElement('div');
+    acciones.className = 'acciones-comentario';
+
+    if (esAdmin) {
+        const moderar = document.createElement('button');
+        moderar.type = 'button';
+        moderar.textContent = comentario.moderado ? 'Mostrar' : 'Ocultar';
+        moderar.addEventListener('click', () => moderarComentario(comentario, post, seccion, moderar));
+        acciones.append(moderar);
+    }
+
+    if (esAdmin || comentario.user_id === usuario.id) {
+        const eliminar = document.createElement('button');
+        eliminar.type = 'button';
+        eliminar.textContent = 'Eliminar';
+        eliminar.addEventListener('click', () => eliminarComentario(comentario, post, seccion, eliminar));
+        acciones.append(eliminar);
+    }
+
+    if (acciones.childElementCount) {
+        elemento.append(acciones);
+    }
+
+    return elemento;
+}
+
+async function comentar(post, seccion, datos) {
+    await api(`/posts/${post.id}/comments`, { metodo: 'POST', datos });
+
+    seccion.querySelector('.form-comentario').reset();
+    await cargarComentarios(post, seccion);
+}
+
+async function eliminarComentario(comentario, post, seccion, boton) {
+    if (!confirm('¿Eliminar este comentario?')) {
+        return;
+    }
+
+    boton.disabled = true;
+    limpiarAviso();
+
+    try {
+        await api(`/comments/${comentario.id}`, { metodo: 'DELETE' });
+        await cargarComentarios(post, seccion);
+    } catch (error) {
+        avisar(error.message, 'error');
+        boton.disabled = false;
+    }
+}
+
+async function moderarComentario(comentario, post, seccion, boton) {
+    boton.disabled = true;
+    limpiarAviso();
+
+    try {
+        await api(`/comments/${comentario.id}/moderate`, {
+            metodo: 'PUT',
+            datos: { moderado: !comentario.moderado },
+        });
+        await cargarComentarios(post, seccion);
+    } catch (error) {
+        avisar(error.message, 'error');
+        boton.disabled = false;
+    }
 }
 
 function puedeGestionar(post) {

@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\AuthController;
+use App\Http\Controllers\CommentController;
 use App\Http\Controllers\MediaController;
 use App\Http\Controllers\PostController;
 use App\Http\Controllers\UserController;
@@ -49,6 +50,11 @@ Route::middleware(['auth:sanctum', 'activo'])->group(function () {
     Route::post('/media', [MediaController::class, 'store']);
     Route::get('/media/{media}/download', [MediaController::class, 'download']);
     Route::delete('/media/{media}', [MediaController::class, 'destroy']);
+
+    Route::get('/posts/{post}/comments', [CommentController::class, 'index']);
+    Route::post('/posts/{post}/comments', [CommentController::class, 'store'])->middleware('throttle:10,1');
+    Route::delete('/comments/{comment}', [CommentController::class, 'destroy']);
+    Route::put('/comments/{comment}/moderate', [CommentController::class, 'moderate']);
 
     Route::middleware('rol:admin')->group(function () {
         Route::get('/users', [UserController::class, 'index']);

@@ -27,6 +27,7 @@ class PostController extends Controller
         $posts = Post::query()
             ->visiblePara($request->user())
             ->with(['user:id,nombre', 'team:id,nombre,categoria', 'media'])
+            ->withCount($this->contadorDeComentarios())
             ->when($filtros['tipo'] ?? null, fn ($query, $tipo) => $query->where('tipo', $tipo))
             ->when($filtros['team_id'] ?? null, fn ($query, $teamId) => $query->where('team_id', $teamId))
             ->when($filtros['temporada'] ?? null, fn ($query, $temporada) => $query->where('temporada', $temporada))
@@ -119,6 +120,18 @@ class PostController extends Controller
 
     private function conRelaciones(Post $post): Post
     {
-        return $post->load(['user:id,nombre', 'team:id,nombre,categoria', 'media']);
+        return $post
+            ->load(['user:id,nombre', 'team:id,nombre,categoria', 'media'])
+            ->loadCount($this->contadorDeComentarios());
+    }
+
+    /**
+     * Cuenta solo los comentarios visibles, como "comentarios_count".
+     *
+     * @return array<string, \Closure>
+     */
+    private function contadorDeComentarios(): array
+    {
+        return ['comments as comentarios_count' => fn ($query) => $query->where('moderado', false)];
     }
 }
