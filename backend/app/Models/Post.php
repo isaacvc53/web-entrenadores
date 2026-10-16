@@ -9,14 +9,9 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Facades\Storage;
 
-#[Fillable(['titulo', 'contenido', 'tipo', 'team_id', 'temporada', 'visibilidad'])]
+#[Fillable(['titulo', 'contenido', 'type_id', 'team_id', 'temporada', 'visibilidad'])]
 class Post extends Model
 {
-    /**
-     * Los tipos de contenido que puede tener una publicación.
-     */
-    public const TIPOS = ['video', 'entrenamiento', 'tarea', 'jugada', 'recurso'];
-
     /**
      * Quién puede ver una publicación: solo entrenadores y administradores, o también los usuarios de consulta.
      */
@@ -54,6 +49,14 @@ class Post extends Model
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
+    }
+
+    /**
+     * @return BelongsTo<PostType, $this>
+     */
+    public function type(): BelongsTo
+    {
+        return $this->belongsTo(PostType::class);
     }
 
     /**

@@ -1,11 +1,16 @@
 <?php
 
 use App\Http\Controllers\AuthController;
+use App\Http\Controllers\CategoryController;
 use App\Http\Controllers\CommentController;
 use App\Http\Controllers\MediaController;
 use App\Http\Controllers\PostController;
+use App\Http\Controllers\PostTypeController;
+use App\Http\Controllers\TeamController;
 use App\Http\Controllers\UserController;
+use App\Models\Category;
 use App\Models\Post;
+use App\Models\PostType;
 use App\Models\Team;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -39,9 +44,13 @@ Route::middleware(['auth:sanctum', 'activo'])->group(function () {
 
     Route::get('/categories', function () {
         return [
-            'tipos' => Post::TIPOS,
+            'categorias' => Category::ordenadas()->get(['id', 'nombre', 'orden']),
+            'tipos' => PostType::ordenados()->get(['id', 'nombre', 'orden']),
             'visibilidades' => Post::VISIBILIDADES,
-            'equipos' => Team::orderBy('nombre')->get(['id', 'nombre', 'categoria', 'temporada']),
+            'equipos' => Team::with('category:id,nombre,orden')
+                ->orderByDesc('temporada')
+                ->orderBy('nombre')
+                ->get(['id', 'nombre', 'category_id', 'temporada']),
         ];
     });
 
@@ -60,5 +69,20 @@ Route::middleware(['auth:sanctum', 'activo'])->group(function () {
         Route::get('/users', [UserController::class, 'index']);
         Route::put('/users/{user}/approve', [UserController::class, 'approve']);
         Route::put('/users/{user}/deactivate', [UserController::class, 'deactivate']);
+
+        Route::post('/categories', [CategoryController::class, 'store']);
+        Route::put('/categories/order', [CategoryController::class, 'reorder']);
+        Route::put('/categories/{category}', [CategoryController::class, 'update']);
+        Route::delete('/categories/{category}', [CategoryController::class, 'destroy']);
+
+        Route::post('/post-types', [PostTypeController::class, 'store']);
+        Route::put('/post-types/order', [PostTypeController::class, 'reorder']);
+        Route::put('/post-types/{postType}', [PostTypeController::class, 'update']);
+        Route::delete('/post-types/{postType}', [PostTypeController::class, 'destroy']);
+
+        Route::post('/teams', [TeamController::class, 'store']);
+        Route::post('/teams/copy-season', [TeamController::class, 'copySeason']);
+        Route::put('/teams/{team}', [TeamController::class, 'update']);
+        Route::delete('/teams/{team}', [TeamController::class, 'destroy']);
     });
 });

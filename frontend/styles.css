@@ -26,6 +26,41 @@ body {
     line-height: 1.5;
 }
 
+/* Que "hidden" oculte siempre, aunque el elemento tenga su propio display. */
+[hidden] {
+    display: none !important;
+}
+
+.menu {
+    display: flex;
+    gap: 4px;
+    margin-bottom: 16px;
+    border-bottom: 1px solid var(--borde);
+}
+
+.menu a {
+    margin-bottom: -1px;
+    padding: 10px 14px;
+    border-bottom: 2px solid transparent;
+    color: var(--texto-suave);
+    font-weight: 600;
+    text-decoration: none;
+}
+
+.menu a:hover {
+    color: var(--texto);
+}
+
+.menu a.activa {
+    border-bottom-color: var(--primario);
+    color: var(--primario);
+}
+
+.menu a:focus-visible {
+    outline: 2px solid var(--primario);
+    outline-offset: 2px;
+}
+
 .cabecera {
     padding: 24px 16px 8px;
     text-align: center;
@@ -202,12 +237,16 @@ button.principal:hover {
     display: flex;
     align-items: center;
     gap: 8px;
+    min-width: 0;
+    max-width: 100%;
     margin: 0;
     font-size: 0.9rem;
 }
 
 .filtro select {
     width: auto;
+    min-width: 0;
+    max-width: 100%;
     margin-top: 0;
 }
 
@@ -453,6 +492,127 @@ td:last-child {
 .form-comentario .principal {
     width: auto;
     flex-shrink: 0;
+}
+
+/* Panel de administración */
+
+.pestanas-admin {
+    flex-wrap: wrap;
+    margin: 12px 0 16px;
+}
+
+.pestanas-admin .pestana {
+    flex: 1 1 auto;
+}
+
+.seccion-admin h3 {
+    margin: 16px 0 8px;
+    font-size: 1rem;
+}
+
+.seccion-admin .fila-titulo h3 {
+    margin: 0;
+}
+
+.fila-editable,
+.fila-nueva {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 8px;
+}
+
+.fila-editable input,
+.fila-nueva input,
+.fila-nueva select {
+    flex: 1 1 140px;
+    width: auto;
+    margin-top: 0;
+}
+
+.fila-editable {
+    padding-bottom: 8px;
+    border-bottom: 1px solid var(--borde);
+}
+
+/* Flechas y nombre siempre en la misma línea; Guardar y Borrar pasan abajo si no caben. */
+.fila-editable input {
+    min-width: 0;
+}
+
+.fila-editable .mover {
+    flex: 0 0 auto;
+    padding: 6px 10px;
+}
+
+/* La flecha que no se puede usar (subir el primero, bajar el último) se ve apagada. */
+.fila-editable .mover:disabled {
+    opacity: 0.3;
+    cursor: default;
+}
+
+.fila-nueva .principal {
+    width: auto;
+}
+
+.filtros-equipos {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px 16px;
+    min-width: 0;
+}
+
+/* Título de cada categoría dentro de la tabla de equipos. */
+.tabla-equipos tr.grupo th {
+    padding-top: 16px;
+    border-bottom: 2px solid var(--borde);
+    color: var(--texto);
+    font-size: 0.95rem;
+}
+
+.tabla-equipos tr.grupo:first-child th {
+    padding-top: 4px;
+}
+
+.tabla-equipos td:first-child {
+    width: 100%;
+    white-space: normal;
+    overflow-wrap: break-word;
+}
+
+/* La columna Temporada solo hace falta cuando se ven todas las temporadas a la vez. */
+.tabla-equipos:not(.con-temporada) th:nth-child(2),
+.tabla-equipos:not(.con-temporada) td:nth-child(2) {
+    display: none;
+}
+
+.tabla-equipos .botones {
+    justify-content: flex-end;
+}
+
+.tabla-equipos .botones button {
+    padding: 5px 10px;
+    font-size: 0.85rem;
+}
+
+.tabla-equipos tr.editando td {
+    white-space: normal;
+    background: var(--fondo);
+}
+
+.tabla-equipos tr.editando .fila-nueva {
+    margin: 0;
+}
+
+/* Texto que solo leen los lectores de pantalla. */
+.solo-lectores {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    white-space: nowrap;
 }
 
 @media (max-width: 520px) {

@@ -21,4 +21,17 @@ class AuditLog extends Model
      * @var bool
      */
     public $timestamps = false;
+
+    /**
+     * Registra una acción de un usuario sobre un elemento.
+     */
+    public static function registrar(User $user, string $accion, ?Model $elemento = null, ?string $entidad = null): void
+    {
+        static::create([
+            'user_id' => $user->id,
+            'accion' => $accion,
+            'entidad' => $elemento?->getTable() ?? $entidad,
+            'entidad_id' => $elemento?->getKey(),
+        ]);
+    }
 }

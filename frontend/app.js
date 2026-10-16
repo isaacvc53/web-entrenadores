@@ -10,6 +10,7 @@ const MAX_BYTES_ADJUNTO = 10 * 1024 * 1024;
 
 let usuario = null;
 let postEditando = null;
+let catalogo = { categorias: [], tipos: [], visibilidades: [], equipos: [] };
 let urlsDeAdjuntos = [];
 
 // --- Llamadas a la API ---
@@ -108,7 +109,8 @@ function mostrarSesion() {
     $('dato-rol').textContent = usuario.rol;
 
     const esAdmin = usuario.rol === 'admin';
-    $('panel-admin').hidden = !esAdmin;
+    $('menu').hidden = !esAdmin;
+    mostrarVista();
 
     if (esAdmin) {
         cargarUsuarios();
@@ -118,6 +120,26 @@ function mostrarSesion() {
     cerrarFormPost();
     cargarCategorias();
     cargarPosts();
+}
+
+// Muestra Publicaciones o Administración según la dirección (#administracion).
+// Así, al recargar se sigue en la misma sección y el botón "atrás" del navegador funciona.
+function mostrarVista() {
+    const enAdministracion = usuario?.rol === 'admin' && location.hash === '#administracion';
+
+    $('vista-publicaciones').hidden = enAdministracion;
+    $('panel-admin').hidden = !enAdministracion;
+
+    for (const enlace of document.querySelectorAll('#menu a')) {
+        const activo = (enlace.getAttribute('href') === '#administracion') === enAdministracion;
+        enlace.classList.toggle('activa', activo);
+
+        if (activo) {
+            enlace.setAttribute('aria-current', 'page');
+        } else {
+            enlace.removeAttribute('aria-current');
+        }
+    }
 }
 
 function elegirPestana(nombre) {
@@ -172,6 +194,7 @@ async function salir() {
     }
 
     sessionStorage.removeItem(CLAVE_TOKEN);
+    history.replaceState(null, '', location.pathname);
     mostrarAcceso();
     avisar('Sesión cerrada.');
 }
@@ -227,14 +250,400 @@ async function cambiarEstado(u, boton) {
     }
 }
 
+// --- Administración: categorías, tipos y equipos ---
+
+// Categorías y tipos se gestionan igual: nombre y orden. Solo cambia la ruta de la API.
+const LISTAS_EDITABLES = {
+    categorias: { clave: 'categorias', ruta: '/categories', lista: 'lista-categorias', formulario: 'form-categoria' },
+    tipos: { clave: 'tipos', ruta: '/post-types', lista: 'lista-tipos', formulario: 'form-tipo' },
+};
+
+function elegirSeccionAdmin(id) {
+    for (const pestana of document.querySelectorAll('.pestanas-admin .pestana')) {
+        const activa = pestana.dataset.seccion === id;
+        pestana.classList.toggle('activa', activa);
+        pestana.setAttribute('aria-selected', String(activa));
+        $(pestana.dataset.seccion).hidden = !activa;
+    }
+}
+
+function pintarAdministracion() {
+    for (const conf of Object.values(LISTAS_EDITABLES)) {
+        const elementos = catalogo[conf.clave];
+        $(conf.lista).replaceChildren(
+            ...elementos.map((elemento, posicion) => filaEditable(conf, elemento, posicion, elementos.length)),
+        );
+    }
+
+    pintarEquipos();
+}
+
+// Ejecuta una acción desde un botón: lo desactiva mientras tanto y muestra el error si falla.
+async function conBoton(boton, accion) {
+    boton.disabled = true;
+    limpiarAviso();
+
+    try {
+        await accion();
+    } catch (error) {
+        avisar(error.message, 'error');
+    } finally {
+        boton.disabled = false;
+    }
+}
+
+// Tras un cambio en el panel se recarga todo, porque nombres y desplegables cambian en toda la página.
+async function recargarTrasCambio(mensaje) {
+    await cargarCategorias();
+    await cargarPosts();
+    avisar(mensaje);
+}
+
+function filaEditable(conf, elemento, posicion, total) {
+    const fila = document.createElement('form');
+    fila.className = 'fila-editable';
+    fila.noValidate = true;
+    fila.dataset.id = elemento.id;
+
+    const subir = botonDeMover('subir', '↑', `Subir «${elemento.nombre}»`, posicion === 0);
+    subir.addEventListener('click', () => moverElemento(conf, posicion, -1, subir));
+
+    const bajar = botonDeMover('bajar', '↓', `Bajar «${elemento.nombre}»`, posicion === total - 1);
+    bajar.addEventListener('click', () => moverElemento(conf, posicion, 1, bajar));
+
+    const nombre = document.createElement('input');
+    nombre.type = 'text';
+    nombre.name = 'nombre';
+    nombre.maxLength = 50;
+    nombre.value = elemento.nombre;
+    nombre.setAttribute('aria-label', 'Nombre');
+
+    const guardar = document.createElement('button');
+    guardar.type = 'submit';
+    guardar.textContent = 'Guardar';
+
+    const borrar = document.createElement('button');
+    borrar.type = 'button';
+    borrar.textContent = 'Borrar';
+    borrar.addEventListener('click', () => {
+        if (confirm(`¿Borrar «${elemento.nombre}»?`)) {
+            conBoton(borrar, async () => {
+                const respuesta = await api(`${conf.ruta}/${elemento.id}`, { metodo: 'DELETE' });
+                await recargarTrasCambio(respuesta.message);
+            });
+        }
+    });
+
+    fila.append(subir, bajar, nombre, guardar, borrar);
+    fila.addEventListener('submit', (evento) => {
+        evento.preventDefault();
+        enviar(fila, async (datos) => {
+            await api(`${conf.ruta}/${elemento.id}`, {
+                metodo: 'PUT',
+                datos: { nombre: datos.nombre.trim() },
+            });
+            await recargarTrasCambio(`«${datos.nombre.trim()}» guardado.`);
+        });
+    });
+
+    return fila;
+}
+
+function botonDeMover(clase, flecha, etiqueta, desactivado) {
+    const boton = document.createElement('button');
+    boton.type = 'button';
+    boton.className = `mover ${clase}`;
+    boton.textContent = flecha;
+    boton.title = etiqueta;
+    boton.setAttribute('aria-label', etiqueta);
+    boton.disabled = desactivado;
+    return boton;
+}
+
+// Intercambia un elemento con el de arriba (-1) o el de abajo (+1) y envía la lista completa ordenada.
+async function moverElemento(conf, posicion, desplazamiento, boton) {
+    const ids = catalogo[conf.clave].map((e) => e.id);
+    const destino = posicion + desplazamiento;
+    const movido = ids[posicion];
+
+    [ids[posicion], ids[destino]] = [ids[destino], ids[posicion]];
+
+    await conBoton(boton, async () => {
+        await api(`${conf.ruta}/order`, { metodo: 'PUT', datos: { ids } });
+        await cargarCategorias();
+
+        // Tras repintar la lista, el foco vuelve a la misma flecha del elemento movido,
+        // para poder seguir moviéndolo con el teclado.
+        const fila = $(conf.lista).querySelector(`[data-id="${movido}"]`);
+        const flecha = fila?.querySelector(desplazamiento < 0 ? '.subir' : '.bajar');
+        (flecha && !flecha.disabled ? flecha : fila?.querySelector('input'))?.focus();
+    });
+}
+
+async function crearElementoEditable(conf, datos) {
+    const nombre = datos.nombre.trim();
+
+    await api(conf.ruta, { metodo: 'POST', datos: { nombre } });
+    $(conf.formulario).reset();
+    await recargarTrasCambio(`«${nombre}» añadido.`);
+}
+
+// La temporada siguiente a "2026-27" es "2027-28", y a "2026-2027", "2027-2028".
+// Si no tiene ninguno de esos formatos, no se propone nada.
+function temporadaSiguiente(temporada) {
+    const partes = /^(\d{4})-(\d{2}|\d{4})$/.exec(temporada ?? '');
+
+    if (!partes) {
+        return '';
+    }
+
+    const inicio = Number(partes[1]) + 1;
+    const fin = partes[2].length === 4
+        ? String(inicio + 1)
+        : String((inicio + 1) % 100).padStart(2, '0');
+
+    return `${inicio}-${fin}`;
+}
+
+// Temporada que debe mostrar el filtro tras recargar, por ejemplo la que se acaba de crear.
+let temporadaAMostrar = null;
+
+function pintarEquipos() {
+    const temporadas = [...new Set(catalogo.equipos.map((e) => e.temporada))];
+    const filtro = $('filtro-temporada-equipos');
+    const habiaFiltro = filtro.options.length > 0;
+
+    rellenarDesplegable(filtro, [...temporadas.map((t) => opcion(t, t)), opcion('', 'Todas')]);
+
+    if (temporadaAMostrar !== null && temporadas.includes(temporadaAMostrar)) {
+        filtro.value = temporadaAMostrar;
+    } else if (!habiaFiltro && temporadas.length) {
+        // La primera vez se muestra la temporada más reciente.
+        filtro.value = temporadas[0];
+    }
+    temporadaAMostrar = null;
+
+    const categorias = () => catalogo.categorias.map((c) => opcion(c.id, c.nombre));
+    const filtroCategoria = $('filtro-categoria-equipos');
+    rellenarDesplegable(filtroCategoria, [opcion('', 'Todas'), ...categorias()]);
+
+    const visibles = catalogo.equipos.filter((e) =>
+        (filtro.value === '' || e.temporada === filtro.value)
+        && (filtroCategoria.value === '' || String(e.category_id) === filtroCategoria.value));
+
+    $('lista-equipos').replaceChildren(...filasDeEquiposAgrupadas(visibles));
+    $('lista-equipos').closest('table').classList.toggle('con-temporada', filtro.value === '');
+    $('sin-equipos').hidden = visibles.length > 0;
+
+    rellenarDesplegable($('nuevo-equipo-categoria'), categorias());
+    rellenarDesplegable($('copiar-desde'), temporadas.map((t) => opcion(t, t)));
+
+    const formEquipo = $('form-equipo');
+    if (!formEquipo.temporada.value) {
+        formEquipo.temporada.value = filtro.value || temporadas[0] || '';
+    }
+
+    const formCopiar = $('form-copiar-temporada');
+    formCopiar.hasta.placeholder = temporadaSiguiente(formCopiar.desde.value) || 'Temporada nueva';
+}
+
+// Equipo que se está editando; solo se edita uno a la vez.
+let equipoEditando = null;
+
+// Agrupa los equipos por categoría, en el orden que decide el administrador,
+// y dentro de cada una por temporada (la más reciente primero) y nombre.
+function filasDeEquiposAgrupadas(equipos) {
+    const posicion = new Map(catalogo.categorias.map((c, i) => [c.id, i]));
+    const ordenados = [...equipos].sort((a, b) =>
+        (posicion.get(a.category_id) ?? Infinity) - (posicion.get(b.category_id) ?? Infinity)
+        || b.temporada.localeCompare(a.temporada)
+        || a.nombre.localeCompare(b.nombre, 'es', { numeric: true }));
+
+    const filas = [];
+    let categoriaActual;
+
+    for (const equipo of ordenados) {
+        if (equipo.category_id !== categoriaActual) {
+            categoriaActual = equipo.category_id;
+            const total = ordenados.filter((e) => e.category_id === categoriaActual).length;
+            filas.push(filaDeGrupo(`${equipo.category?.nombre ?? 'Sin categoría'} (${total})`));
+        }
+
+        filas.push(equipo.id === equipoEditando ? filaEditandoEquipo(equipo) : filaDeEquipo(equipo));
+    }
+
+    return filas;
+}
+
+function filaDeGrupo(titulo) {
+    const fila = document.createElement('tr');
+    fila.className = 'grupo';
+
+    const celda = document.createElement('th');
+    celda.colSpan = 3;
+    celda.scope = 'colgroup';
+    celda.textContent = titulo;
+
+    fila.append(celda);
+    return fila;
+}
+
+function filaDeEquipo(equipo) {
+    const fila = document.createElement('tr');
+    fila.dataset.id = equipo.id;
+
+    const editar = document.createElement('button');
+    editar.type = 'button';
+    editar.className = 'editar';
+    editar.textContent = 'Editar';
+    editar.setAttribute('aria-label', `Editar «${equipo.nombre}»`);
+    editar.addEventListener('click', () => {
+        equipoEditando = equipo.id;
+        pintarEquipos();
+        $('lista-equipos').querySelector(`[data-id="${equipo.id}"] input`)?.focus();
+    });
+
+    const borrar = document.createElement('button');
+    borrar.type = 'button';
+    borrar.textContent = 'Borrar';
+    borrar.setAttribute('aria-label', `Borrar «${equipo.nombre}»`);
+    borrar.addEventListener('click', () => {
+        if (confirm(`¿Borrar el equipo «${equipo.nombre}» (${equipo.temporada})?`)) {
+            conBoton(borrar, async () => {
+                const respuesta = await api(`/teams/${equipo.id}`, { metodo: 'DELETE' });
+                await recargarTrasCambio(respuesta.message);
+            });
+        }
+    });
+
+    const acciones = document.createElement('div');
+    acciones.className = 'botones';
+    acciones.append(editar, borrar);
+
+    for (const contenido of [equipo.nombre, equipo.temporada, acciones]) {
+        const celda = document.createElement('td');
+        celda.append(contenido);
+        fila.append(celda);
+    }
+
+    return fila;
+}
+
+function filaEditandoEquipo(equipo) {
+    const fila = document.createElement('tr');
+    fila.className = 'editando';
+    fila.dataset.id = equipo.id;
+
+    const formulario = document.createElement('form');
+    formulario.className = 'fila-nueva';
+    formulario.noValidate = true;
+
+    const nombre = document.createElement('input');
+    nombre.type = 'text';
+    nombre.name = 'nombre';
+    nombre.maxLength = 100;
+    nombre.value = equipo.nombre;
+    nombre.setAttribute('aria-label', 'Nombre del equipo');
+
+    const categoria = document.createElement('select');
+    categoria.name = 'category_id';
+    categoria.setAttribute('aria-label', 'Categoría');
+    categoria.append(...catalogo.categorias.map((c) => opcion(c.id, c.nombre)));
+    categoria.value = equipo.category_id;
+
+    const temporada = document.createElement('input');
+    temporada.type = 'text';
+    temporada.name = 'temporada';
+    temporada.maxLength = 20;
+    temporada.value = equipo.temporada;
+    temporada.setAttribute('aria-label', 'Temporada');
+
+    const guardar = document.createElement('button');
+    guardar.type = 'submit';
+    guardar.className = 'principal';
+    guardar.textContent = 'Guardar';
+
+    const cancelar = document.createElement('button');
+    cancelar.type = 'button';
+    cancelar.textContent = 'Cancelar';
+    cancelar.addEventListener('click', terminarEdicionDeEquipo);
+
+    const botones = document.createElement('div');
+    botones.className = 'botones';
+    botones.append(guardar, cancelar);
+
+    formulario.append(nombre, categoria, temporada, botones);
+    formulario.addEventListener('submit', (evento) => {
+        evento.preventDefault();
+        enviar(formulario, async (datos) => {
+            await api(`/teams/${equipo.id}`, {
+                metodo: 'PUT',
+                datos: {
+                    nombre: datos.nombre.trim(),
+                    category_id: Number(datos.category_id),
+                    temporada: datos.temporada.trim(),
+                },
+            });
+            equipoEditando = null;
+            await recargarTrasCambio(`Equipo «${datos.nombre.trim()}» guardado.`);
+        });
+    });
+
+    // Escape cancela la edición.
+    formulario.addEventListener('keydown', (evento) => {
+        if (evento.key === 'Escape') {
+            terminarEdicionDeEquipo();
+        }
+    });
+
+    const celda = document.createElement('td');
+    celda.colSpan = 3;
+    celda.append(formulario);
+    fila.append(celda);
+
+    return fila;
+}
+
+function terminarEdicionDeEquipo() {
+    const id = equipoEditando;
+
+    equipoEditando = null;
+    pintarEquipos();
+    $('lista-equipos').querySelector(`[data-id="${id}"] .editar`)?.focus();
+}
+
+async function crearEquipo(datos) {
+    const cuerpo = {
+        nombre: datos.nombre.trim(),
+        category_id: Number(datos.category_id),
+        temporada: datos.temporada.trim(),
+    };
+
+    await api('/teams', { metodo: 'POST', datos: cuerpo });
+
+    temporadaAMostrar = cuerpo.temporada;
+    const formulario = $('form-equipo');
+    formulario.nombre.value = '';
+    formulario.nombre.focus();
+    await recargarTrasCambio(`Equipo «${cuerpo.nombre}» añadido a ${cuerpo.temporada}.`);
+}
+
+async function copiarTemporada(datos) {
+    const formulario = $('form-copiar-temporada');
+    const hasta = datos.hasta.trim() || temporadaSiguiente(datos.desde);
+    const respuesta = await api('/teams/copy-season', { metodo: 'POST', datos: { desde: datos.desde, hasta } });
+
+    formulario.hasta.value = '';
+    temporadaAMostrar = hasta;
+    await recargarTrasCambio(respuesta.message);
+}
+
 // --- Publicaciones ---
 
 const ETIQUETAS_VISIBILIDAD = {
     entrenadores: 'Solo entrenadores',
     todos: 'Todos los usuarios',
 };
-
-const mayuscula = (texto) => texto.charAt(0).toUpperCase() + texto.slice(1);
 
 function opcion(valor, texto) {
     const elemento = document.createElement('option');
@@ -243,20 +652,51 @@ function opcion(valor, texto) {
     return elemento;
 }
 
+// Rellena un desplegable conservando la opción elegida, si sigue existiendo.
+function rellenarDesplegable(desplegable, opciones) {
+    const elegida = desplegable.value;
+
+    desplegable.replaceChildren(...opciones);
+
+    if ([...desplegable.options].some((o) => o.value === elegida)) {
+        desplegable.value = elegida;
+    }
+}
+
+// Opciones de equipo agrupadas por temporada, de la más reciente a la más antigua.
+function opcionesDeEquipos(equipos) {
+    const porTemporada = new Map();
+
+    for (const equipo of equipos) {
+        porTemporada.set(equipo.temporada, [...(porTemporada.get(equipo.temporada) ?? []), equipo]);
+    }
+
+    return [...porTemporada].map(([temporada, lista]) => {
+        const grupo = document.createElement('optgroup');
+        grupo.label = temporada;
+        grupo.append(...lista.map((e) => opcion(e.id, `${e.nombre} (${e.category?.nombre ?? 'sin categoría'})`)));
+        return grupo;
+    });
+}
+
+// Carga categorías, tipos, visibilidades y equipos, y rellena todos los desplegables.
 async function cargarCategorias() {
     try {
-        const categorias = await api('/categories');
-        const tipos = () => categorias.tipos.map((tipo) => opcion(tipo, mayuscula(tipo)));
+        catalogo = await api('/categories');
 
-        $('post-tipo').replaceChildren(...tipos());
-        $('filtro-tipo').replaceChildren(opcion('', 'Todos los tipos'), ...tipos());
-        $('post-visibilidad').replaceChildren(
-            ...categorias.visibilidades.map((v) => opcion(v, ETIQUETAS_VISIBILIDAD[v] ?? v)),
+        const tipos = () => catalogo.tipos.map((t) => opcion(t.id, t.nombre));
+
+        rellenarDesplegable($('post-tipo'), tipos());
+        rellenarDesplegable($('filtro-tipo'), [opcion('', 'Todos los tipos'), ...tipos()]);
+        rellenarDesplegable(
+            $('post-visibilidad'),
+            catalogo.visibilidades.map((v) => opcion(v, ETIQUETAS_VISIBILIDAD[v] ?? v)),
         );
-        $('post-equipo').replaceChildren(
-            opcion('', 'Sin equipo'),
-            ...categorias.equipos.map((e) => opcion(e.id, `${e.nombre} (${e.categoria})`)),
-        );
+        rellenarDesplegable($('post-equipo'), [opcion('', 'Sin equipo'), ...opcionesDeEquipos(catalogo.equipos)]);
+
+        if (usuario?.rol === 'admin') {
+            pintarAdministracion();
+        }
     } catch (error) {
         avisar(error.message, 'error');
     }
@@ -268,7 +708,7 @@ async function cargarPosts() {
     const busqueda = $('filtro-q').value.trim();
 
     if (tipo) {
-        parametros.set('tipo', tipo);
+        parametros.set('type_id', tipo);
     }
     if (busqueda) {
         parametros.set('q', busqueda);
@@ -297,12 +737,12 @@ function tarjetaDePost(post) {
 
     const tipo = document.createElement('span');
     tipo.className = 'etiqueta tipo';
-    tipo.textContent = mayuscula(post.tipo);
+    tipo.textContent = post.type?.nombre ?? 'Sin tipo';
 
     const detalles = [
         post.user?.nombre,
         new Date(post.created_at).toLocaleDateString('es-ES'),
-        post.team?.nombre,
+        post.team && `${post.team.nombre} (${post.team.category?.nombre ?? 'sin categoría'})`,
         post.temporada,
         ETIQUETAS_VISIBILIDAD[post.visibilidad],
     ].filter(Boolean);
@@ -701,7 +1141,7 @@ function abrirFormPost(post = null) {
 
     if (post) {
         formulario.titulo.value = post.titulo;
-        formulario.tipo.value = post.tipo;
+        formulario.type_id.value = post.type_id;
         formulario.visibilidad.value = post.visibilidad;
         formulario.team_id.value = post.team_id ?? '';
         formulario.temporada.value = post.temporada ?? '';
@@ -728,6 +1168,7 @@ async function guardarPost(datos) {
         ...campos,
         contenido: campos.contenido.trim() || null,
         temporada: campos.temporada.trim() || null,
+        type_id: Number(campos.type_id),
         team_id: campos.team_id ? Number(campos.team_id) : null,
     };
 
@@ -803,6 +1244,37 @@ $('pestana-login').addEventListener('click', () => elegirPestana('login'));
 $('pestana-registro').addEventListener('click', () => elegirPestana('registro'));
 $('boton-salir').addEventListener('click', salir);
 $('filtro-usuarios').addEventListener('change', cargarUsuarios);
+
+window.addEventListener('hashchange', () => {
+    limpiarAviso();
+    mostrarVista();
+    window.scrollTo(0, 0);
+});
+
+for (const pestana of document.querySelectorAll('.pestanas-admin .pestana')) {
+    pestana.addEventListener('click', () => elegirSeccionAdmin(pestana.dataset.seccion));
+}
+
+for (const conf of Object.values(LISTAS_EDITABLES)) {
+    $(conf.formulario).addEventListener('submit', (evento) => {
+        evento.preventDefault();
+        enviar(evento.target, (datos) => crearElementoEditable(conf, datos));
+    });
+}
+
+$('filtro-temporada-equipos').addEventListener('change', pintarEquipos);
+$('filtro-categoria-equipos').addEventListener('change', pintarEquipos);
+$('copiar-desde').addEventListener('change', pintarEquipos);
+
+$('form-equipo').addEventListener('submit', (evento) => {
+    evento.preventDefault();
+    enviar(evento.target, crearEquipo);
+});
+
+$('form-copiar-temporada').addEventListener('submit', (evento) => {
+    evento.preventDefault();
+    enviar(evento.target, copiarTemporada);
+});
 
 $('form-login').addEventListener('submit', (evento) => {
     evento.preventDefault();

@@ -59,109 +59,193 @@
 
         <!-- Con sesión -->
         <section id="vista-sesion" hidden>
-            <div class="tarjeta">
-                <div class="fila-titulo">
-                    <h2>Mi cuenta</h2>
-                    <button type="button" id="boton-salir">Cerrar sesión</button>
-                </div>
-                <dl class="datos">
-                    <dt>Nombre</dt>
-                    <dd id="dato-nombre"></dd>
-                    <dt>Email</dt>
-                    <dd id="dato-email"></dd>
-                    <dt>Rol</dt>
-                    <dd id="dato-rol"></dd>
-                </dl>
-            </div>
+            <!-- Solo lo ve el administrador; los demás tienen una única sección. -->
+            <nav id="menu" class="menu" aria-label="Secciones" hidden>
+                <a href="#publicaciones">Publicaciones</a>
+                <a href="#administracion">Administración</a>
+            </nav>
 
-            <div class="tarjeta">
-                <div class="fila-titulo">
-                    <h2>Publicaciones</h2>
-                    <button type="button" id="boton-nueva">Nueva publicación</button>
-                </div>
-
-                <form id="form-post" class="form-post" novalidate hidden>
-                    <h3 id="titulo-form-post">Nueva publicación</h3>
-                    <label>
-                        Título
-                        <input type="text" name="titulo" maxlength="255" required>
-                    </label>
-                    <div class="dos-columnas">
-                        <label>
-                            Tipo
-                            <select name="tipo" id="post-tipo" required></select>
-                        </label>
-                        <label>
-                            Quién puede verla
-                            <select name="visibilidad" id="post-visibilidad"></select>
-                        </label>
+            <div id="vista-publicaciones">
+                <div class="tarjeta">
+                    <div class="fila-titulo">
+                        <h2>Mi cuenta</h2>
+                        <button type="button" id="boton-salir">Cerrar sesión</button>
                     </div>
-                    <div class="dos-columnas">
-                        <label>
-                            Equipo
-                            <select name="team_id" id="post-equipo"></select>
-                        </label>
-                        <label>
-                            Temporada
-                            <input type="text" name="temporada" maxlength="20" placeholder="2026-27">
-                        </label>
-                    </div>
-                    <label>
-                        Contenido
-                        <textarea name="contenido" rows="5"></textarea>
-                    </label>
-                    <label>
-                        Archivos
-                        <input type="file" name="archivos" multiple accept=".jpg,.jpeg,.png,.webp,.pdf">
-                        <small>Imágenes (JPG, PNG o WebP) o PDF, hasta 10 MB cada uno. Máximo 10 adjuntos por publicación.</small>
-                    </label>
-                    <label>
-                        Enlace de YouTube
-                        <input type="url" name="enlace" placeholder="https://www.youtube.com/watch?v=…">
-                    </label>
-                    <div class="botones">
-                        <button type="submit" class="principal" id="boton-guardar-post">Publicar</button>
-                        <button type="button" id="boton-cancelar-post">Cancelar</button>
-                    </div>
-                </form>
-
-                <div class="filtros">
-                    <select id="filtro-tipo" aria-label="Filtrar por tipo"></select>
-                    <input type="search" id="filtro-q" placeholder="Buscar por título" aria-label="Buscar por título">
+                    <dl class="datos">
+                        <dt>Nombre</dt>
+                        <dd id="dato-nombre"></dd>
+                        <dt>Email</dt>
+                        <dd id="dato-email"></dd>
+                        <dt>Rol</dt>
+                        <dd id="dato-rol"></dd>
+                    </dl>
                 </div>
 
-                <div id="lista-posts"></div>
-                <p id="sin-posts" class="nota" hidden>No hay publicaciones.</p>
-                <p id="mas-posts" class="nota" hidden></p>
+                <div class="tarjeta">
+                    <div class="fila-titulo">
+                        <h2>Publicaciones</h2>
+                        <button type="button" id="boton-nueva">Nueva publicación</button>
+                    </div>
+
+                    <form id="form-post" class="form-post" novalidate hidden>
+                        <h3 id="titulo-form-post">Nueva publicación</h3>
+                        <label>
+                            Título
+                            <input type="text" name="titulo" maxlength="255" required>
+                        </label>
+                        <div class="dos-columnas">
+                            <label>
+                                Tipo
+                                <select name="type_id" id="post-tipo" required></select>
+                            </label>
+                            <label>
+                                Quién puede verla
+                                <select name="visibilidad" id="post-visibilidad"></select>
+                            </label>
+                        </div>
+                        <div class="dos-columnas">
+                            <label>
+                                Equipo
+                                <select name="team_id" id="post-equipo"></select>
+                            </label>
+                            <label>
+                                Temporada
+                                <input type="text" name="temporada" maxlength="20" placeholder="2026-27">
+                            </label>
+                        </div>
+                        <label>
+                            Contenido
+                            <textarea name="contenido" rows="5"></textarea>
+                        </label>
+                        <label>
+                            Archivos
+                            <input type="file" name="archivos" multiple accept=".jpg,.jpeg,.png,.webp,.pdf">
+                            <small>Imágenes (JPG, PNG o WebP) o PDF, hasta 10 MB cada uno. Máximo 10 adjuntos por publicación.</small>
+                        </label>
+                        <label>
+                            Enlace de YouTube
+                            <input type="url" name="enlace" placeholder="https://www.youtube.com/watch?v=…">
+                        </label>
+                        <div class="botones">
+                            <button type="submit" class="principal" id="boton-guardar-post">Publicar</button>
+                            <button type="button" id="boton-cancelar-post">Cancelar</button>
+                        </div>
+                    </form>
+
+                    <div class="filtros">
+                        <select id="filtro-tipo" aria-label="Filtrar por tipo"></select>
+                        <input type="search" id="filtro-q" placeholder="Buscar por título" aria-label="Buscar por título">
+                    </div>
+
+                    <div id="lista-posts"></div>
+                    <p id="sin-posts" class="nota" hidden>No hay publicaciones.</p>
+                    <p id="mas-posts" class="nota" hidden></p>
+                </div>
             </div>
 
             <div id="panel-admin" class="tarjeta" hidden>
-                <div class="fila-titulo">
-                    <h2>Usuarios</h2>
-                    <label class="filtro">
-                        Mostrar
-                        <select id="filtro-usuarios">
-                            <option value="0">Pendientes o desactivados</option>
-                            <option value="1">Activos</option>
-                            <option value="">Todos</option>
-                        </select>
-                    </label>
+                <h2>Administración</h2>
+
+                <div class="pestanas pestanas-admin" role="tablist">
+                    <button type="button" class="pestana activa" data-seccion="admin-usuarios" role="tab" aria-selected="true">Usuarios</button>
+                    <button type="button" class="pestana" data-seccion="admin-categorias" role="tab" aria-selected="false">Categorías</button>
+                    <button type="button" class="pestana" data-seccion="admin-tipos" role="tab" aria-selected="false">Tipos</button>
+                    <button type="button" class="pestana" data-seccion="admin-equipos" role="tab" aria-selected="false">Equipos</button>
                 </div>
-                <div class="tabla-contenedor">
-                    <table>
-                        <thead>
-                            <tr>
-                                <th>Nombre</th>
-                                <th>Email</th>
-                                <th>Rol</th>
-                                <th>Estado</th>
-                                <th></th>
-                            </tr>
-                        </thead>
-                        <tbody id="lista-usuarios"></tbody>
-                    </table>
-                </div>
-                <p id="sin-usuarios" class="nota" hidden>No hay usuarios en esta lista.</p>
+
+                <section id="admin-usuarios" class="seccion-admin">
+                    <div class="fila-titulo">
+                        <h3>Usuarios</h3>
+                        <label class="filtro">
+                            Mostrar
+                            <select id="filtro-usuarios">
+                                <option value="0">Pendientes o desactivados</option>
+                                <option value="1">Activos</option>
+                                <option value="">Todos</option>
+                            </select>
+                        </label>
+                    </div>
+                    <div class="tabla-contenedor">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Nombre</th>
+                                    <th>Email</th>
+                                    <th>Rol</th>
+                                    <th>Estado</th>
+                                    <th></th>
+                                </tr>
+                            </thead>
+                            <tbody id="lista-usuarios"></tbody>
+                        </table>
+                    </div>
+                    <p id="sin-usuarios" class="nota" hidden>No hay usuarios en esta lista.</p>
+                </section>
+
+                <section id="admin-categorias" class="seccion-admin" hidden>
+                    <h3>Categorías</h3>
+                    <p class="nota">Con las flechas cambias el orden en que salen en los desplegables. Una categoría con equipos no se puede borrar.</p>
+                    <div id="lista-categorias"></div>
+                    <form id="form-categoria" class="fila-nueva" novalidate>
+                        <input type="text" name="nombre" maxlength="50" placeholder="Nueva categoría" aria-label="Nombre de la nueva categoría" required>
+                        <button type="submit" class="principal">Añadir</button>
+                    </form>
+                </section>
+
+                <section id="admin-tipos" class="seccion-admin" hidden>
+                    <h3>Tipos de publicación</h3>
+                    <p class="nota">Con las flechas cambias el orden en que salen en los desplegables. Un tipo que usa alguna publicación no se puede borrar.</p>
+                    <div id="lista-tipos"></div>
+                    <form id="form-tipo" class="fila-nueva" novalidate>
+                        <input type="text" name="nombre" maxlength="50" placeholder="Nuevo tipo" aria-label="Nombre del nuevo tipo" required>
+                        <button type="submit" class="principal">Añadir</button>
+                    </form>
+                </section>
+
+                <section id="admin-equipos" class="seccion-admin" hidden>
+                    <div class="fila-titulo">
+                        <h3>Equipos</h3>
+                        <div class="filtros-equipos">
+                            <label class="filtro">
+                                Temporada
+                                <select id="filtro-temporada-equipos"></select>
+                            </label>
+                            <label class="filtro">
+                                Categoría
+                                <select id="filtro-categoria-equipos"></select>
+                            </label>
+                        </div>
+                    </div>
+                    <div class="tabla-contenedor">
+                        <table class="tabla-equipos">
+                            <thead>
+                                <tr>
+                                    <th>Nombre</th>
+                                    <th>Temporada</th>
+                                    <th><span class="solo-lectores">Acciones</span></th>
+                                </tr>
+                            </thead>
+                            <tbody id="lista-equipos"></tbody>
+                        </table>
+                    </div>
+                    <p id="sin-equipos" class="nota" hidden>No hay equipos con estos filtros.</p>
+
+                    <h3>Nuevo equipo</h3>
+                    <form id="form-equipo" class="fila-nueva" novalidate>
+                        <input type="text" name="nombre" maxlength="100" placeholder="Nombre, p. ej. Cadete A" aria-label="Nombre del equipo" required>
+                        <select name="category_id" id="nuevo-equipo-categoria" aria-label="Categoría" required></select>
+                        <input type="text" name="temporada" maxlength="20" placeholder="2026-27" aria-label="Temporada" required>
+                        <button type="submit" class="principal">Añadir</button>
+                    </form>
+
+                    <h3>Copiar equipos a otra temporada</h3>
+                    <p class="nota">Crea en la temporada nueva los mismos equipos, con su categoría. Los que ya existan no se duplican.</p>
+                    <form id="form-copiar-temporada" class="fila-nueva" novalidate>
+                        <select name="desde" id="copiar-desde" aria-label="Copiar desde la temporada" required></select>
+                        <input type="text" name="hasta" maxlength="20" placeholder="2027-28" aria-label="A la temporada" required>
+                        <button type="submit" class="principal">Copiar</button>
+                    </form>
+                </section>
             </div>
         </section>
     </main>

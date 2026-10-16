@@ -12,12 +12,23 @@ use Illuminate\Validation\Rule;
 class PostController extends Controller
 {
     /**
+     * Datos relacionados que acompañan a cada publicación en las respuestas.
+     */
+    private const RELACIONES = [
+        'user:id,nombre',
+        'type:id,nombre',
+        'team:id,nombre,category_id',
+        'team.category:id,nombre',
+        'media',
+    ];
+
+    /**
      * Lista las publicaciones que el usuario puede ver, de la más reciente a la más antigua, con filtros opcionales.
      */
     public function index(Request $request): JsonResponse
     {
         $filtros = $request->validate([
-            'tipo' => ['sometimes', Rule::in(Post::TIPOS)],
+            'type_id' => ['sometimes', 'integer'],
             'team_id' => ['sometimes', 'integer'],
             'temporada' => ['sometimes', 'string', 'max:20'],
             'user_id' => ['sometimes', 'integer'],
@@ -26,9 +37,9 @@ class PostController extends Controller
 
         $posts = Post::query()
             ->visiblePara($request->user())
-            ->with(['user:id,nombre', 'team:id,nombre,categoria', 'media'])
+            ->with(self::RELACIONES)
             ->withCount($this->contadorDeComentarios())
-            ->when($filtros['tipo'] ?? null, fn ($query, $tipo) => $query->where('tipo', $tipo))
+            ->when($filtros['type_id'] ?? null, fn ($query, $typeId) => $query->where('type_id', $typeId))
             ->when($filtros['team_id'] ?? null, fn ($query, $teamId) => $query->where('team_id', $teamId))
             ->when($filtros['temporada'] ?? null, fn ($query, $temporada) => $query->where('temporada', $temporada))
             ->when($filtros['user_id'] ?? null, fn ($query, $userId) => $query->where('user_id', $userId))
@@ -111,7 +122,7 @@ class PostController extends Controller
         return [
             'titulo' => [$obligatorio, 'string', 'max:255'],
             'contenido' => ['nullable', 'string', 'max:20000'],
-            'tipo' => [$obligatorio, Rule::in(Post::TIPOS)],
+            'type_id' => [$obligatorio, 'integer', 'exists:post_types,id'],
             'team_id' => ['nullable', 'integer', 'exists:teams,id'],
             'temporada' => ['nullable', 'string', 'max:20'],
             'visibilidad' => ['sometimes', Rule::in(Post::VISIBILIDADES)],
@@ -121,7 +132,7 @@ class PostController extends Controller
     private function conRelaciones(Post $post): Post
     {
         return $post
-            ->load(['user:id,nombre', 'team:id,nombre,categoria', 'media'])
+            ->load(self::RELACIONES)
             ->loadCount($this->contadorDeComentarios());
     }
 
