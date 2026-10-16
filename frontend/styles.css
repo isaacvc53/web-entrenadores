@@ -389,6 +389,11 @@ td:last-child {
     overflow-wrap: anywhere;
 }
 
+.ver-en-youtube {
+    font-size: 0.85rem;
+    color: var(--primario);
+}
+
 .adjunto .quitar {
     padding: 2px 8px;
     font-size: 0.8rem;

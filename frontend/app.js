@@ -555,7 +555,17 @@ function elementoDeAdjunto(media, gestionable) {
         video.allow = 'accelerometer; clipboard-write; encrypted-media; gyroscope; picture-in-picture';
         video.allowFullscreen = true;
         video.referrerPolicy = 'strict-origin-when-cross-origin';
-        caja.append(video);
+
+        // Algunos vídeos no se pueden ver fuera de YouTube porque su dueño lo impide,
+        // y el botón del propio reproductor no siempre abre la página. Este enlace sí.
+        const enlace = document.createElement('a');
+        enlace.className = 'ver-en-youtube';
+        enlace.href = `https://www.youtube.com/watch?v=${encodeURIComponent(media.youtube_id)}`;
+        enlace.target = '_blank';
+        enlace.rel = 'noopener noreferrer';
+        enlace.textContent = 'Ver en YouTube';
+
+        caja.append(video, enlace);
     } else if (media.tipo === 'imagen') {
         // Un <img> normal no envía el token, así que la imagen se descarga con él
         // y se muestra desde una URL local del navegador.
