@@ -1,5 +1,9 @@
-// Dirección de la API del backend en local.
-const API = 'http://127.0.0.1:8010/api';
+// Dirección de la API.
+// En local, la página (puerto 8020) y la API (puerto 8010) se arrancan por separado.
+// En el servidor, la API está en la misma carpeta que la página: …/entrenadores/api.
+const API = location.port === '8020'
+    ? 'http://127.0.0.1:8010/api'
+    : new URL('api', location.origin + location.pathname.replace(/[^/]*$/, '')).href;
 
 const CLAVE_TOKEN = 'portal_token';
 
@@ -7,6 +11,13 @@ const $ = (id) => document.getElementById(id);
 
 // Tamaño máximo de un adjunto; el backend aplica el mismo límite.
 const MAX_BYTES_ADJUNTO = 10 * 1024 * 1024;
+
+// Nombre que se muestra de cada rol.
+const NOMBRES_ROL = {
+    admin: 'Administrador',
+    entrenador: 'Entrenador',
+    consulta: 'Consulta',
+};
 
 let usuario = null;
 let postEditando = null;
@@ -106,7 +117,7 @@ function mostrarSesion() {
 
     $('dato-nombre').textContent = usuario.nombre;
     $('dato-email').textContent = usuario.email;
-    $('dato-rol').textContent = usuario.rol;
+    $('dato-rol').textContent = NOMBRES_ROL[usuario.rol] ?? usuario.rol;
 
     const esAdmin = usuario.rol === 'admin';
     $('menu').hidden = !esAdmin;
@@ -225,13 +236,62 @@ function filaDeUsuario(u) {
     boton.textContent = u.activo ? 'Desactivar' : 'Aprobar';
     boton.addEventListener('click', () => cambiarEstado(u, boton));
 
-    for (const contenido of [u.nombre, u.email, u.rol, etiqueta, u.id === usuario.id ? '' : boton]) {
+    // Tu propio rol no se puede cambiar: se muestra como texto.
+    const esYo = u.id === usuario.id;
+    const rol = esYo ? (NOMBRES_ROL[u.rol] ?? u.rol) : selectorDeRol(u);
+
+    // Nombre y, debajo, el email en pequeño: así la tabla cabe también en el móvil.
+    const persona = document.createElement('div');
+    const email = document.createElement('small');
+    email.textContent = u.email;
+    persona.append(u.nombre, email);
+
+    for (const contenido of [persona, rol, etiqueta, esYo ? '' : boton]) {
         const celda = document.createElement('td');
         celda.append(contenido);
         fila.append(celda);
     }
 
     return fila;
+}
+
+function selectorDeRol(u) {
+    const selector = document.createElement('select');
+    selector.className = 'selector-rol';
+    selector.setAttribute('aria-label', `Rol de ${u.nombre}`);
+
+    for (const [valor, nombre] of Object.entries(NOMBRES_ROL)) {
+        selector.add(new Option(nombre, valor, false, valor === u.rol));
+    }
+
+    selector.addEventListener('change', () => cambiarRol(u, selector));
+
+    return selector;
+}
+
+async function cambiarRol(u, selector) {
+    const nuevo = selector.value;
+
+    // Dar o quitar el administrador se confirma, porque cambia lo que puede hacer esa persona.
+    if ((nuevo === 'admin' || u.rol === 'admin')
+        && !confirm(`¿Cambiar el rol de ${u.nombre} a «${NOMBRES_ROL[nuevo]}»?`)) {
+        selector.value = u.rol;
+        return;
+    }
+
+    selector.disabled = true;
+    limpiarAviso();
+
+    try {
+        const respuesta = await api(`/users/${u.id}/role`, { metodo: 'PUT', datos: { rol: nuevo } });
+
+        avisar(`${respuesta.message} (${u.email}: ${NOMBRES_ROL[nuevo]})`);
+        await cargarUsuarios();
+    } catch (error) {
+        avisar(error.message, 'error');
+        selector.value = u.rol;
+        selector.disabled = false;
+    }
 }
 
 async function cambiarEstado(u, boton) {
@@ -1217,9 +1277,10 @@ async function comprobarApi() {
 
     try {
         await api('/health');
-        estado.textContent = 'API conectada';
-        estado.className = 'estado ok';
+        // Si todo va bien no hace falta decir nada.
+        estado.hidden = true;
     } catch (error) {
+        estado.hidden = false;
         estado.textContent = error.estado === 0 ? 'Sin conexión con la API' : 'La API responde con errores';
         estado.className = 'estado error';
     }
