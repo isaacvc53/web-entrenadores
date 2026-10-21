@@ -19,6 +19,11 @@ class User extends Authenticatable
     use HasApiTokens, HasFactory, Notifiable;
 
     /**
+     * Roles posibles (los mismos que la columna rol de la tabla users).
+     */
+    public const ROLES = ['admin', 'entrenador', 'consulta'];
+
+    /**
      * La columna que guarda el hash de la contraseña.
      *
      * @var string

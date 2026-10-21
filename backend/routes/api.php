@@ -69,6 +69,7 @@ Route::middleware(['auth:sanctum', 'activo'])->group(function () {
         Route::get('/users', [UserController::class, 'index']);
         Route::put('/users/{user}/approve', [UserController::class, 'approve']);
         Route::put('/users/{user}/deactivate', [UserController::class, 'deactivate']);
+        Route::put('/users/{user}/role', [UserController::class, 'changeRole']);
 
         Route::post('/categories', [CategoryController::class, 'store']);
         Route::put('/categories/order', [CategoryController::class, 'reorder']);

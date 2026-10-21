@@ -6,6 +6,7 @@ use App\Models\AuditLog;
 use App\Models\User;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;
 
 class UserController extends Controller
 {
@@ -59,6 +60,32 @@ class UserController extends Controller
 
         return response()->json([
             'message' => 'Cuenta desactivada.',
+            'user' => $user,
+        ]);
+    }
+
+    /**
+     * Cambia el rol de una cuenta (admin, entrenador o consulta).
+     */
+    public function changeRole(Request $request, User $user): JsonResponse
+    {
+        $data = $request->validate([
+            'rol' => ['required', Rule::in(User::ROLES)],
+        ]);
+
+        // Así el portal nunca se queda sin administrador por error.
+        if ($user->is($request->user())) {
+            return response()->json([
+                'message' => 'No puedes cambiar tu propio rol.',
+            ], 422);
+        }
+
+        $user->forceFill(['rol' => $data['rol']])->save();
+
+        $this->audit($request, 'cambiar_rol', $user);
+
+        return response()->json([
+            'message' => 'Rol cambiado.',
             'user' => $user,
         ]);
     }
