@@ -42,7 +42,15 @@ Route::middleware(['auth:sanctum', 'activo'])->group(function () {
         return $request->user();
     });
 
-    Route::get('/categories', function () {
+    Route::get('/categories', function (Request $request) {
+        // Temporadas para el filtro: las de los equipos y las escritas en las publicaciones
+        // que puede ver el usuario, sin repetir y de la más reciente a la más antigua.
+        $temporadas = Team::query()->distinct()->pluck('temporada')
+            ->merge(Post::visiblePara($request->user())->whereNotNull('temporada')->distinct()->pluck('temporada'))
+            ->unique()
+            ->sortDesc()
+            ->values();
+
         return [
             'categorias' => Category::ordenadas()->get(['id', 'nombre', 'orden']),
             'tipos' => PostType::ordenados()->get(['id', 'nombre', 'orden']),
@@ -51,6 +59,7 @@ Route::middleware(['auth:sanctum', 'activo'])->group(function () {
                 ->orderByDesc('temporada')
                 ->orderBy('nombre')
                 ->get(['id', 'nombre', 'category_id', 'temporada']),
+            'temporadas' => $temporadas,
         ];
     });
 
