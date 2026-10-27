@@ -21,7 +21,7 @@ const NOMBRES_ROL = {
 
 let usuario = null;
 let postEditando = null;
-let catalogo = { categorias: [], tipos: [], visibilidades: [], equipos: [] };
+let catalogo = { categorias: [], tipos: [], visibilidades: [], equipos: [], temporadas: [] };
 let urlsDeAdjuntos = [];
 
 // --- Llamadas a la API ---
@@ -90,8 +90,9 @@ function mensajeDeError(estado, cuerpo) {
 
 // --- Avisos ---
 
+// Con la ventana de publicación abierta, el aviso sale dentro de ella; si no, quedaría tapado.
 function avisar(texto, tipo = 'ok') {
-    const aviso = $('aviso');
+    const aviso = $('dialogo-post').open ? $('aviso-post') : $('aviso');
     aviso.textContent = texto;
     aviso.className = `aviso ${tipo}`;
     aviso.hidden = false;
@@ -99,6 +100,7 @@ function avisar(texto, tipo = 'ok') {
 
 function limpiarAviso() {
     $('aviso').hidden = true;
+    $('aviso-post').hidden = true;
 }
 
 // --- Vistas ---
@@ -106,7 +108,10 @@ function limpiarAviso() {
 function mostrarAcceso() {
     usuario = null;
     liberarAdjuntos();
+    cerrarFormPost();
     $('lista-posts').replaceChildren();
+    document.body.classList.remove('con-sesion');
+    abrirMenu(false);
     $('vista-sesion').hidden = true;
     $('vista-acceso').hidden = false;
 }
@@ -114,13 +119,14 @@ function mostrarAcceso() {
 function mostrarSesion() {
     $('vista-acceso').hidden = true;
     $('vista-sesion').hidden = false;
+    document.body.classList.add('con-sesion');
 
     $('dato-nombre').textContent = usuario.nombre;
     $('dato-email').textContent = usuario.email;
     $('dato-rol').textContent = NOMBRES_ROL[usuario.rol] ?? usuario.rol;
 
     const esAdmin = usuario.rol === 'admin';
-    $('menu').hidden = !esAdmin;
+    $('enlace-admin').hidden = !esAdmin;
     mostrarVista();
 
     if (esAdmin) {
@@ -133,16 +139,27 @@ function mostrarSesion() {
     cargarPosts();
 }
 
-// Muestra Publicaciones o Administración según la dirección (#administracion).
+// Secciones de la página, cada una con su dirección (#publicaciones, #perfil…).
 // Así, al recargar se sigue en la misma sección y el botón "atrás" del navegador funciona.
-function mostrarVista() {
-    const enAdministracion = usuario?.rol === 'admin' && location.hash === '#administracion';
+const VISTAS = {
+    publicaciones: 'vista-publicaciones',
+    administracion: 'panel-admin',
+    perfil: 'vista-perfil',
+};
 
-    $('vista-publicaciones').hidden = enAdministracion;
-    $('panel-admin').hidden = !enAdministracion;
+function mostrarVista() {
+    let vista = location.hash.slice(1);
+
+    if (!(vista in VISTAS) || (vista === 'administracion' && usuario?.rol !== 'admin')) {
+        vista = 'publicaciones';
+    }
+
+    for (const [nombre, id] of Object.entries(VISTAS)) {
+        $(id).hidden = nombre !== vista;
+    }
 
     for (const enlace of document.querySelectorAll('#menu a')) {
-        const activo = (enlace.getAttribute('href') === '#administracion') === enAdministracion;
+        const activo = enlace.getAttribute('href') === `#${vista}`;
         enlace.classList.toggle('activa', activo);
 
         if (activo) {
@@ -151,6 +168,12 @@ function mostrarVista() {
             enlace.removeAttribute('aria-current');
         }
     }
+}
+
+// En el móvil, el menú se abre y se cierra con el botón ☰.
+function abrirMenu(abrir) {
+    $('menu').classList.toggle('abierto', abrir);
+    $('boton-menu').setAttribute('aria-expanded', String(abrir));
 }
 
 function elegirPestana(nombre) {
@@ -753,6 +776,12 @@ async function cargarCategorias() {
             catalogo.visibilidades.map((v) => opcion(v, ETIQUETAS_VISIBILIDAD[v] ?? v)),
         );
         rellenarDesplegable($('post-equipo'), [opcion('', 'Sin equipo'), ...opcionesDeEquipos(catalogo.equipos)]);
+        rellenarDesplegable($('filtro-equipo'), [opcion('', 'Todos los equipos'), ...opcionesDeEquipos(catalogo.equipos)]);
+
+        rellenarDesplegable(
+            $('filtro-temporada'),
+            [opcion('', 'Todas las temporadas'), ...catalogo.temporadas.map((t) => opcion(t, t))],
+        );
 
         if (usuario?.rol === 'admin') {
             pintarAdministracion();
@@ -764,14 +793,17 @@ async function cargarCategorias() {
 
 async function cargarPosts() {
     const parametros = new URLSearchParams();
-    const tipo = $('filtro-tipo').value;
-    const busqueda = $('filtro-q').value.trim();
+    const filtros = {
+        type_id: $('filtro-tipo').value,
+        team_id: $('filtro-equipo').value,
+        temporada: $('filtro-temporada').value,
+        q: $('filtro-q').value.trim(),
+    };
 
-    if (tipo) {
-        parametros.set('type_id', tipo);
-    }
-    if (busqueda) {
-        parametros.set('q', busqueda);
+    for (const [nombre, valor] of Object.entries(filtros)) {
+        if (valor) {
+            parametros.set(nombre, valor);
+        }
     }
 
     try {
@@ -1210,15 +1242,31 @@ function abrirFormPost(post = null) {
 
     $('titulo-form-post').textContent = post ? 'Editar publicación' : 'Nueva publicación';
     $('boton-guardar-post').textContent = post ? 'Guardar cambios' : 'Publicar';
-    formulario.hidden = false;
-    formulario.scrollIntoView({ block: 'nearest' });
+    $('dialogo-post').showModal();
     formulario.titulo.focus();
 }
 
 function cerrarFormPost() {
+    if ($('dialogo-post').open) {
+        $('dialogo-post').close();
+    }
+}
+
+// Al cerrar la ventana, sea con un botón o con la tecla Escape, se olvida lo escrito.
+function alCerrarFormPost() {
     postEditando = null;
     $('form-post').reset();
-    $('form-post').hidden = true;
+    $('aviso-post').hidden = true;
+}
+
+// Al elegir equipo, si la temporada está vacía se rellena con la del equipo.
+function alElegirEquipo() {
+    const formulario = $('form-post');
+    const equipo = catalogo.equipos.find((e) => String(e.id) === formulario.team_id.value);
+
+    if (equipo && !formulario.temporada.value.trim()) {
+        formulario.temporada.value = equipo.temporada;
+    }
 }
 
 async function guardarPost(datos) {
@@ -1308,8 +1356,19 @@ $('filtro-usuarios').addEventListener('change', cargarUsuarios);
 
 window.addEventListener('hashchange', () => {
     limpiarAviso();
+    abrirMenu(false);
     mostrarVista();
     window.scrollTo(0, 0);
+});
+
+$('boton-menu').addEventListener('click', () => abrirMenu(!$('menu').classList.contains('abierto')));
+
+// Escape cierra el menú del móvil y devuelve el foco a su botón.
+$('menu').addEventListener('keydown', (evento) => {
+    if (evento.key === 'Escape') {
+        abrirMenu(false);
+        $('boton-menu').focus();
+    }
 });
 
 for (const pestana of document.querySelectorAll('.pestanas-admin .pestana')) {
@@ -1349,7 +1408,13 @@ $('form-registro').addEventListener('submit', (evento) => {
 
 $('boton-nueva').addEventListener('click', () => abrirFormPost());
 $('boton-cancelar-post').addEventListener('click', cerrarFormPost);
-$('filtro-tipo').addEventListener('change', cargarPosts);
+$('boton-cerrar-post').addEventListener('click', cerrarFormPost);
+$('dialogo-post').addEventListener('close', alCerrarFormPost);
+$('post-equipo').addEventListener('change', alElegirEquipo);
+
+for (const filtro of ['filtro-tipo', 'filtro-equipo', 'filtro-temporada']) {
+    $(filtro).addEventListener('change', cargarPosts);
+}
 
 let esperaBusqueda;
 $('filtro-q').addEventListener('input', () => {
