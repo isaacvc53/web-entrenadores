@@ -20,7 +20,7 @@ class CommentController extends Controller
         Gate::authorize('view', $post);
 
         $comentarios = $post->comments()
-            ->with('user:id,nombre')
+            ->with('user:id,nombre,foto')
             ->when($request->user()->rol !== 'admin', fn ($query) => $query->where('moderado', false))
             ->oldest()
             ->oldest('id')
@@ -45,7 +45,7 @@ class CommentController extends Controller
         $comentario->user_id = $request->user()->id;
         $comentario->save();
 
-        return response()->json($comentario->refresh()->load('user:id,nombre'), 201);
+        return response()->json($comentario->refresh()->load('user:id,nombre,foto'), 201);
     }
 
     /**
@@ -83,7 +83,7 @@ class CommentController extends Controller
 
         return response()->json([
             'message' => $comment->moderado ? 'Comentario ocultado.' : 'Comentario visible de nuevo.',
-            'comment' => $comment->load('user:id,nombre'),
+            'comment' => $comment->load('user:id,nombre,foto'),
         ]);
     }
 

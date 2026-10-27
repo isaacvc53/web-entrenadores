@@ -6,6 +6,7 @@ use App\Http\Controllers\CommentController;
 use App\Http\Controllers\MediaController;
 use App\Http\Controllers\PostController;
 use App\Http\Controllers\PostTypeController;
+use App\Http\Controllers\ProfilePhotoController;
 use App\Http\Controllers\TeamController;
 use App\Http\Controllers\UserController;
 use App\Models\Category;
@@ -41,6 +42,10 @@ Route::middleware(['auth:sanctum', 'activo'])->group(function () {
     Route::get('/user', function (Request $request) {
         return $request->user();
     });
+
+    Route::post('/user/photo', [ProfilePhotoController::class, 'store'])->middleware('throttle:10,1');
+    Route::delete('/user/photo', [ProfilePhotoController::class, 'destroy']);
+    Route::get('/users/{user}/photo', [ProfilePhotoController::class, 'show']);
 
     Route::get('/categories', function (Request $request) {
         // Temporadas para el filtro: las de los equipos y las escritas en las publicaciones

@@ -15,7 +15,7 @@ class PostController extends Controller
      * Datos relacionados que acompañan a cada publicación en las respuestas.
      */
     private const RELACIONES = [
-        'user:id,nombre',
+        'user:id,nombre,foto',
         'type:id,nombre',
         'team:id,nombre,category_id',
         'team.category:id,nombre',

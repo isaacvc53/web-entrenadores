@@ -71,6 +71,79 @@ async function descargarAdjunto(media) {
     return respuesta.blob();
 }
 
+// --- Fotos de perfil ---
+
+// Fotos ya descargadas, por id de usuario, para no pedir la misma foto una vez por publicación.
+let fotosDePerfil = new Map();
+
+function urlDeFoto(userId) {
+    if (!fotosDePerfil.has(userId)) {
+        const promesa = peticion(`/users/${userId}/photo`)
+            .then((respuesta) => respuesta.blob())
+            .then((blob) => URL.createObjectURL(blob));
+
+        // Si falla, se olvida, para volver a intentarlo la próxima vez.
+        promesa.catch(() => fotosDePerfil.delete(userId));
+        fotosDePerfil.set(userId, promesa);
+    }
+
+    return fotosDePerfil.get(userId);
+}
+
+function olvidarFoto(userId) {
+    fotosDePerfil.get(userId)?.then((url) => URL.revokeObjectURL(url)).catch(() => {});
+    fotosDePerfil.delete(userId);
+}
+
+function olvidarFotos() {
+    for (const userId of [...fotosDePerfil.keys()]) {
+        olvidarFoto(userId);
+    }
+    fotosDePerfil = new Map();
+}
+
+function iniciales(nombre = '') {
+    const palabras = nombre.trim().split(/\s+/).filter(Boolean);
+
+    return palabras.slice(0, 2).map((p) => p[0].toUpperCase()).join('') || '?';
+}
+
+// Cada persona tiene siempre el mismo color de fondo, sacado de su nombre.
+function colorDe(nombre = '') {
+    let suma = 0;
+    for (const letra of nombre) {
+        suma = (suma * 31 + letra.codePointAt(0)) % 360;
+    }
+
+    return `hsl(${suma} 45% 38%)`;
+}
+
+// Círculo con la foto de la persona o, si no tiene, sus iniciales.
+// "persona" es un usuario de la API: { id, nombre, tiene_foto }.
+function avatar(persona, tamano = 36) {
+    const circulo = document.createElement('span');
+    circulo.className = 'avatar';
+    circulo.style.setProperty('--tamano', `${tamano}px`);
+    circulo.style.background = colorDe(persona?.nombre);
+    circulo.textContent = iniciales(persona?.nombre);
+    circulo.setAttribute('aria-hidden', 'true');
+
+    if (persona?.tiene_foto) {
+        urlDeFoto(persona.id)
+            .then((url) => {
+                const imagen = document.createElement('img');
+                imagen.src = url;
+                imagen.alt = '';
+                circulo.replaceChildren(imagen);
+            })
+            .catch(() => {
+                // Se quedan las iniciales.
+            });
+    }
+
+    return circulo;
+}
+
 class ErrorApi extends Error {
     constructor(estado, mensaje) {
         super(mensaje);
@@ -108,6 +181,7 @@ function limpiarAviso() {
 function mostrarAcceso() {
     usuario = null;
     liberarAdjuntos();
+    olvidarFotos();
     cerrarFormPost();
     $('lista-posts').replaceChildren();
     document.body.classList.remove('con-sesion');
@@ -121,9 +195,7 @@ function mostrarSesion() {
     $('vista-sesion').hidden = false;
     document.body.classList.add('con-sesion');
 
-    $('dato-nombre').textContent = usuario.nombre;
-    $('dato-email').textContent = usuario.email;
-    $('dato-rol').textContent = NOMBRES_ROL[usuario.rol] ?? usuario.rol;
+    pintarPerfil();
 
     const esAdmin = usuario.rol === 'admin';
     $('enlace-admin').hidden = !esAdmin;
@@ -168,6 +240,60 @@ function mostrarVista() {
             enlace.removeAttribute('aria-current');
         }
     }
+}
+
+// --- Mi perfil ---
+
+function pintarPerfil() {
+    $('dato-nombre').textContent = usuario.nombre;
+    $('dato-email').textContent = usuario.email;
+    $('dato-rol').textContent = NOMBRES_ROL[usuario.rol] ?? usuario.rol;
+
+    $('avatar-perfil').replaceChildren(avatar(usuario, 96));
+    $('avatar-menu').replaceChildren(avatar(usuario, 24));
+    $('boton-quitar-foto').hidden = !usuario.tiene_foto;
+}
+
+async function cambiarFoto() {
+    const entrada = $('input-foto');
+    const archivo = entrada.files[0];
+    entrada.value = '';
+
+    if (!archivo) {
+        return;
+    }
+    if (archivo.size > MAX_BYTES_ADJUNTO) {
+        avisar('La foto supera los 10 MB.', 'error');
+        return;
+    }
+
+    const datos = new FormData();
+    datos.append('foto', archivo);
+
+    await conBoton($('boton-foto'), async () => {
+        const respuesta = await api('/user/photo', { metodo: 'POST', datos });
+        await trasCambiarFoto(respuesta);
+    });
+}
+
+async function quitarFoto() {
+    if (!confirm('¿Quitar tu foto de perfil?')) {
+        return;
+    }
+
+    await conBoton($('boton-quitar-foto'), async () => {
+        const respuesta = await api('/user/photo', { metodo: 'DELETE' });
+        await trasCambiarFoto(respuesta);
+    });
+}
+
+// Tras cambiar la foto se olvida la anterior y se repinta todo donde sale.
+async function trasCambiarFoto(respuesta) {
+    usuario = respuesta.user;
+    olvidarFoto(usuario.id);
+    pintarPerfil();
+    avisar(respuesta.message);
+    await cargarPosts();
 }
 
 // En el móvil, el menú se abre y se cierra con el botón ☰.
@@ -824,6 +950,21 @@ function tarjetaDePost(post) {
     const tarjeta = document.createElement('article');
     tarjeta.className = 'post';
 
+    // Arriba, quién la ha publicado y cuándo.
+    const nombreAutor = document.createElement('strong');
+    nombreAutor.textContent = post.user?.nombre ?? 'Usuario';
+
+    const fecha = document.createElement('span');
+    fecha.className = 'fecha';
+    fecha.textContent = new Date(post.created_at).toLocaleDateString('es-ES', { dateStyle: 'long' });
+
+    const textoAutor = document.createElement('div');
+    textoAutor.append(nombreAutor, fecha);
+
+    const autor = document.createElement('div');
+    autor.className = 'autor';
+    autor.append(avatar(post.user, 36), textoAutor);
+
     const titulo = document.createElement('h3');
     titulo.textContent = post.titulo;
 
@@ -832,8 +973,6 @@ function tarjetaDePost(post) {
     tipo.textContent = post.type?.nombre ?? 'Sin tipo';
 
     const detalles = [
-        post.user?.nombre,
-        new Date(post.created_at).toLocaleDateString('es-ES'),
         post.team && `${post.team.nombre} (${post.team.category?.nombre ?? 'sin categoría'})`,
         post.temporada,
         ETIQUETAS_VISIBILIDAD[post.visibilidad],
@@ -847,7 +986,7 @@ function tarjetaDePost(post) {
         return dato;
     }));
 
-    tarjeta.append(titulo, meta);
+    tarjeta.append(autor, titulo, meta);
 
     if (post.contenido) {
         const contenido = document.createElement('p');
@@ -988,7 +1127,7 @@ function elementoDeComentario(comentario, post, seccion) {
         timeStyle: 'short',
     });
 
-    cabecera.append(autor, fecha);
+    cabecera.append(avatar(comentario.user, 28), autor, fecha);
 
     if (comentario.moderado) {
         const marca = document.createElement('span');
@@ -1361,7 +1500,11 @@ window.addEventListener('hashchange', () => {
     window.scrollTo(0, 0);
 });
 
-$('boton-menu').addEventListener('click', () => abrirMenu(!$('menu').classList.contains('abierto')));
+$('boton-foto').addEventListener('click', () => $('input-foto').click());
+$('input-foto').addEventListener('change', cambiarFoto);
+$('boton-quitar-foto').addEventListener('click', quitarFoto);
+
+$('boton-menu').addEventListener('click',() => abrirMenu(!$('menu').classList.contains('abierto')));
 
 // Escape cierra el menú del móvil y devuelve el foco a su botón.
 $('menu').addEventListener('keydown', (evento) => {

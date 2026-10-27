@@ -494,6 +494,68 @@ button.cerrar:hover {
     border-top: 0;
 }
 
+/* Círculo con la foto de perfil o, si no hay, las iniciales. El tamaño llega en --tamano. */
+.avatar {
+    display: inline-flex;
+    flex-shrink: 0;
+    align-items: center;
+    justify-content: center;
+    width: var(--tamano, 36px);
+    height: var(--tamano, 36px);
+    overflow: hidden;
+    border-radius: 50%;
+    color: #fff;
+    font-size: calc(var(--tamano, 36px) * 0.4);
+    font-weight: 700;
+    line-height: 1;
+    user-select: none;
+}
+
+.avatar img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.autor {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 8px;
+}
+
+.autor strong {
+    display: block;
+    line-height: 1.2;
+}
+
+.autor .fecha {
+    font-size: 0.85rem;
+    color: var(--texto-suave);
+}
+
+.enlace-perfil {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.enlace-perfil .avatar {
+    box-shadow: 0 0 0 2px rgb(255 255 255 / 70%);
+}
+
+.perfil-foto {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 16px;
+    margin: 12px 0 20px;
+}
+
+.perfil-foto .botones {
+    flex-wrap: wrap;
+}
+
 .post h3 {
     margin: 0 0 4px;
     font-size: 1rem;

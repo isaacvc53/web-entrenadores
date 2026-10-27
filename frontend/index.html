@@ -26,7 +26,7 @@
             <nav id="menu" class="menu" aria-label="Secciones">
                 <a href="#publicaciones">Publicaciones</a>
                 <a href="#administracion" id="enlace-admin">Administración</a>
-                <a href="#perfil">Mi perfil</a>
+                <a href="#perfil" class="enlace-perfil"><span id="avatar-menu"></span>Mi perfil</a>
                 <button type="button" id="boton-salir">Cerrar sesión</button>
             </nav>
         </div>
@@ -82,6 +82,17 @@
         <section id="vista-sesion" hidden>
             <div id="vista-perfil" class="tarjeta" hidden>
                 <h2>Mi perfil</h2>
+                <div class="perfil-foto">
+                    <span id="avatar-perfil"></span>
+                    <div>
+                        <div class="botones">
+                            <button type="button" id="boton-foto">Cambiar foto</button>
+                            <button type="button" id="boton-quitar-foto">Quitar foto</button>
+                        </div>
+                        <input type="file" id="input-foto" accept=".jpg,.jpeg,.png,.webp" hidden>
+                        <small>JPG, PNG o WebP, hasta 10 MB. Se recorta en cuadrado desde el centro.</small>
+                    </div>
+                </div>
                 <dl class="datos">
                     <dt>Nombre</dt>
                     <dd id="dato-nombre"></dd>
