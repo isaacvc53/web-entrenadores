@@ -9,23 +9,20 @@ use Illuminate\Auth\Access\Response;
 class PostPolicy
 {
     /**
-     * Los usuarios de consulta solo ven las publicaciones visibles para todos.
+     * Todos los usuarios con la cuenta activa ven todas las publicaciones.
+     * Se deja aquí por si algún día hay un rol con menos permisos.
      */
     public function view(User $user, Post $post): Response
     {
-        return $user->rol !== 'consulta' || $post->visibilidad === 'todos'
-            ? Response::allow()
-            : Response::deny('No tienes permiso para ver esta publicación.');
+        return Response::allow();
     }
 
     /**
-     * Entrenadores y administradores pueden publicar; los usuarios de consulta no.
+     * Todos los usuarios con la cuenta activa (administradores y entrenadores) pueden publicar.
      */
     public function create(User $user): Response
     {
-        return in_array($user->rol, ['admin', 'entrenador'], true)
-            ? Response::allow()
-            : Response::deny('No tienes permiso para publicar.');
+        return Response::allow();
     }
 
     /**

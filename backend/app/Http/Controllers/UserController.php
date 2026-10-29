@@ -65,7 +65,7 @@ class UserController extends Controller
     }
 
     /**
-     * Cambia el rol de una cuenta (admin, entrenador o consulta).
+     * Cambia el rol de una cuenta (admin o entrenador).
      */
     public function changeRole(Request $request, User $user): JsonResponse
     {

@@ -103,24 +103,38 @@
                 </dl>
             </div>
 
-            <div id="vista-publicaciones">
-                <div class="tarjeta">
-                    <div class="fila-titulo">
-                        <h2>Publicaciones</h2>
-                        <button type="button" id="boton-nueva">Nueva publicación</button>
-                    </div>
+            <!-- Publicaciones: a la izquierda el botón de publicar y los filtros; a la derecha, la lista. -->
+            <div id="vista-publicaciones" class="con-lateral">
+                <aside class="lateral tarjeta">
+                    <button type="button" id="boton-nueva" class="principal">Nueva publicación</button>
 
+                    <h2>Filtrar</h2>
                     <div class="filtros">
-                        <select id="filtro-tipo" aria-label="Filtrar por tipo"></select>
-                        <select id="filtro-equipo" aria-label="Filtrar por equipo"></select>
-                        <select id="filtro-temporada" aria-label="Filtrar por temporada"></select>
-                        <input type="search" id="filtro-q" placeholder="Buscar por título" aria-label="Buscar por título">
+                        <label>
+                            Buscar
+                            <input type="search" id="filtro-q" placeholder="Título">
+                        </label>
+                        <label>
+                            Tipo
+                            <select id="filtro-tipo"></select>
+                        </label>
+                        <label>
+                            Equipo
+                            <select id="filtro-equipo"></select>
+                        </label>
+                        <label>
+                            Temporada
+                            <select id="filtro-temporada"></select>
+                        </label>
                     </div>
+                </aside>
 
-                    <div id="lista-posts"></div>
+                <section class="principal-publicaciones" aria-labelledby="titulo-publicaciones">
+                    <h2 id="titulo-publicaciones" class="titulo-seccion">Publicaciones</h2>
+                    <div id="lista-posts" class="rejilla-posts"></div>
                     <p id="sin-posts" class="nota" hidden>No hay publicaciones.</p>
                     <p id="mas-posts" class="nota" hidden></p>
-                </div>
+                </section>
             </div>
 
             <!-- Ventana por encima de la página para crear o editar una publicación. -->
@@ -135,17 +149,11 @@
                         Título
                         <input type="text" name="titulo" maxlength="255" required>
                     </label>
-                    <div class="dos-columnas">
+                    <div class="tres-columnas">
                         <label>
                             Tipo
                             <select name="type_id" id="post-tipo" required></select>
                         </label>
-                        <label>
-                            Quién puede verla
-                            <select name="visibilidad" id="post-visibilidad"></select>
-                        </label>
-                    </div>
-                    <div class="dos-columnas">
                         <label>
                             Equipo
                             <select name="team_id" id="post-equipo"></select>
@@ -211,7 +219,7 @@
                         </table>
                     </div>
                     <p id="sin-usuarios" class="nota" hidden>No hay usuarios en esta lista.</p>
-                    <p class="nota">Entrenador: publica y comenta. Consulta: solo puede leer. Administrador: además gestiona usuarios, categorías, tipos y equipos.</p>
+                    <p class="nota">Entrenador: publica y comenta. Administrador: además gestiona usuarios, categorías, tipos y equipos.</p>
                 </section>
 
                 <section id="admin-categorias" class="seccion-admin" hidden>

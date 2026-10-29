@@ -1,5 +1,5 @@
 :root {
-    --fondo: #eef1f5;
+    --fondo: #eef0f3;
     --tarjeta: #ffffff;
     --texto: #1c2430;
     --texto-suave: #5b6675;
@@ -15,10 +15,16 @@
     --pendiente: #8a5a00;
     --pendiente-fondo: #fff3d6;
     --sombra: 0 1px 2px rgb(16 24 40 / 6%), 0 2px 8px rgb(16 24 40 / 5%);
+    /* Ancho máximo del contenido: la cabecera y la página usan el mismo. */
+    --ancho: 1280px;
 }
 
-* {
+/* Todo con esquinas rectas: ningún elemento se redondea. */
+*,
+*::before,
+*::after {
     box-sizing: border-box;
+    border-radius: 0;
 }
 
 body {
@@ -39,24 +45,24 @@ body {
 .cabecera {
     position: relative;
     z-index: 10;
-    background: linear-gradient(135deg, var(--primario), var(--primario-oscuro));
+    border-bottom: 4px solid var(--primario-oscuro);
+    background: var(--primario);
     color: #fff;
-    box-shadow: 0 2px 8px rgb(0 0 0 / 15%);
 }
 
 .cabecera-contenido {
     display: flex;
     align-items: center;
     gap: 16px;
-    max-width: 960px;
+    max-width: var(--ancho);
     margin: 0 auto;
-    padding: 10px 16px;
+    padding: 10px 24px;
 }
 
 .marca {
     display: flex;
     align-items: center;
-    gap: 10px;
+    gap: 12px;
     min-width: 0;
     margin-right: auto;
     color: #fff;
@@ -65,16 +71,18 @@ body {
 
 .marca img {
     flex-shrink: 0;
-    width: 48px;
-    height: 48px;
+    width: 52px;
+    height: 52px;
     filter: drop-shadow(0 1px 2px rgb(0 0 0 / 35%));
 }
 
 .marca-titulo {
     display: block;
-    font-size: 1.15rem;
+    font-size: 1.2rem;
     font-weight: 700;
     line-height: 1.2;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
 }
 
 .marca-club {
@@ -91,15 +99,21 @@ body {
 
 .con-sesion .menu {
     display: flex;
-    align-items: center;
-    gap: 4px;
+    align-items: stretch;
+    gap: 2px;
+    align-self: stretch;
+    margin: -10px 0;
 }
 
+/* Las opciones ocupan todo el alto de la cabecera; la elegida lleva una barra blanca debajo. */
 .menu a,
 .menu button {
-    padding: 8px 12px;
+    display: flex;
+    align-items: center;
+    padding: 0 14px;
     border: 0;
-    border-radius: 6px;
+    border-bottom: 4px solid transparent;
+    margin-bottom: -4px;
     background: transparent;
     color: #fff;
     font-weight: 600;
@@ -109,27 +123,26 @@ body {
 
 .menu a:hover,
 .menu button:hover {
-    background: rgb(255 255 255 / 15%);
+    background: var(--primario-oscuro);
 }
 
 .menu a.activa {
-    background: #fff;
-    color: var(--primario);
+    border-bottom-color: #fff;
+    background: var(--primario-oscuro);
 }
 
 .menu button {
-    margin-left: 8px;
-    border: 1px solid rgb(255 255 255 / 55%);
+    margin-left: 12px;
 }
 
 .cabecera :focus-visible {
     outline: 2px solid #fff;
-    outline-offset: 2px;
+    outline-offset: -4px;
 }
 
 .boton-menu {
-    padding: 4px 12px;
-    border: 1px solid rgb(255 255 255 / 55%);
+    padding: 6px 14px;
+    border: 1px solid rgb(255 255 255 / 60%);
     background: transparent;
     color: #fff;
     font-size: 1.3rem;
@@ -138,14 +151,13 @@ body {
 
 .boton-menu:hover {
     border-color: #fff;
-    background: rgb(255 255 255 / 15%);
+    background: var(--primario-oscuro);
 }
 
 .estado {
     width: fit-content;
     margin: 0 auto 10px;
     padding: 2px 10px;
-    border-radius: 999px;
     font-size: 0.85rem;
 }
 
@@ -155,39 +167,54 @@ body {
 }
 
 main {
-    max-width: 760px;
+    max-width: var(--ancho);
     margin: 0 auto;
-    padding: 16px;
+    padding: 24px;
 }
 
 .tarjeta {
-    background: var(--tarjeta);
-    border: 1px solid var(--borde);
-    border-radius: 12px;
-    padding: 20px;
     margin-bottom: 16px;
+    padding: 20px;
+    border: 1px solid var(--borde);
+    border-top: 3px solid var(--primario);
+    background: var(--tarjeta);
     box-shadow: var(--sombra);
 }
 
-#vista-acceso {
-    max-width: 420px;
-    margin: 16px auto 0;
+h2 {
+    margin: 0 0 12px;
+    font-size: 1.15rem;
 }
 
-/* Pestañas como un interruptor: fondo gris y la opción elegida en blanco. */
+.titulo-seccion {
+    margin: 0 0 12px;
+    padding-left: 10px;
+    border-left: 4px solid var(--primario);
+    font-size: 1.3rem;
+    line-height: 1.2;
+    text-transform: uppercase;
+    letter-spacing: 0.02em;
+}
+
+#vista-acceso {
+    max-width: 440px;
+    margin: 24px auto 0;
+}
+
+/* Pestañas: una franja con la opción elegida en blanco y una barra roja debajo. */
 .pestanas {
     display: flex;
-    gap: 4px;
+    border-bottom: 1px solid var(--borde);
     margin-bottom: 12px;
-    padding: 4px;
-    border-radius: 10px;
-    background: #e1e6ed;
+    background: #e3e7ec;
 }
 
 .pestana {
     flex: 1;
+    padding: 10px 14px;
     border: 0;
-    border-radius: 7px;
+    border-bottom: 3px solid transparent;
+    margin-bottom: -1px;
     background: transparent;
     color: var(--texto-suave);
     font-weight: 600;
@@ -198,9 +225,9 @@ main {
 }
 
 .pestana.activa {
+    border-bottom-color: var(--primario);
     background: var(--tarjeta);
     color: var(--primario);
-    box-shadow: var(--sombra);
 }
 
 form label {
@@ -218,7 +245,6 @@ textarea {
     margin-top: 4px;
     padding: 9px 10px;
     border: 1px solid var(--borde);
-    border-radius: 6px;
     background: #fff;
     color: var(--texto);
     font: inherit;
@@ -247,7 +273,6 @@ small {
 button {
     padding: 9px 14px;
     border: 1px solid var(--borde);
-    border-radius: 6px;
     background: #fff;
     color: var(--texto);
     font: inherit;
@@ -264,21 +289,17 @@ button:disabled {
     cursor: wait;
 }
 
-button.principal,
-#boton-nueva {
+button.principal {
+    width: 100%;
     border-color: var(--primario);
     background: var(--primario);
     color: #fff;
     font-weight: 600;
 }
 
-button.principal:hover,
-#boton-nueva:hover {
+button.principal:hover {
+    border-color: var(--primario-oscuro);
     background: var(--primario-oscuro);
-}
-
-button.principal {
-    width: 100%;
 }
 
 .nota {
@@ -290,7 +311,7 @@ button.principal {
 .aviso {
     margin: 0 0 16px;
     padding: 12px 14px;
-    border-radius: 8px;
+    border-left: 4px solid currentColor;
     white-space: pre-line;
 }
 
@@ -315,7 +336,6 @@ button.principal {
 
 .fila-titulo h2 {
     margin: 0;
-    font-size: 1.15rem;
 }
 
 .filtro {
@@ -403,8 +423,8 @@ td:last-child {
 .etiqueta {
     display: inline-block;
     padding: 2px 8px;
-    border-radius: 999px;
     font-size: 0.8rem;
+    font-weight: 600;
 }
 
 .etiqueta.tipo {
@@ -412,21 +432,82 @@ td:last-child {
     color: var(--primario-oscuro);
 }
 
+.etiqueta.activo {
+    background: var(--ok-fondo);
+    color: var(--ok);
+}
+
+.etiqueta.inactivo {
+    background: var(--pendiente-fondo);
+    color: var(--pendiente);
+}
+
+/* Publicaciones: columna lateral fija con los filtros y, a su lado, las tarjetas. */
+
+.con-lateral {
+    display: grid;
+    grid-template-columns: 280px minmax(0, 1fr);
+    gap: 24px;
+    align-items: start;
+}
+
+/* Si la columna de las publicaciones es más alta, la lateral se queda a la vista al bajar. */
+.lateral {
+    position: sticky;
+    top: 16px;
+    margin-bottom: 0;
+}
+
+.lateral h2 {
+    margin: 20px 0 12px;
+    padding-top: 16px;
+    border-top: 1px solid var(--borde);
+    font-size: 0.85rem;
+    color: var(--texto-suave);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+.filtros label {
+    margin-bottom: 12px;
+}
+
+.filtros label:last-child {
+    margin-bottom: 0;
+}
+
+/* Las publicaciones, en tantas columnas como quepan (dos en una pantalla de ordenador). */
+.rejilla-posts {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(380px, 1fr));
+    gap: 16px;
+    align-items: start;
+}
+
+.post {
+    min-width: 0;
+    padding: 16px;
+    border: 1px solid var(--borde);
+    border-top: 3px solid var(--primario);
+    background: var(--tarjeta);
+    box-shadow: var(--sombra);
+}
+
 /* Ventana emergente de nueva publicación / editar. */
 
 .dialogo {
-    width: min(640px, calc(100% - 32px));
+    width: min(720px, calc(100% - 32px));
     max-height: calc(100% - 32px);
-    padding: 20px;
+    padding: 24px;
     border: 0;
-    border-radius: 12px;
+    border-top: 4px solid var(--primario);
     background: var(--tarjeta);
     color: var(--texto);
     box-shadow: 0 12px 40px rgb(0 0 0 / 30%);
 }
 
 .dialogo::backdrop {
-    background: rgb(16 24 40 / 55%);
+    background: rgb(16 24 40 / 60%);
 }
 
 /* Con la ventana abierta, la página de detrás no se mueve. */
@@ -436,7 +517,6 @@ body:has(.dialogo[open]) {
 
 .form-post h2 {
     margin: 0;
-    font-size: 1.15rem;
 }
 
 button.cerrar {
@@ -451,9 +531,9 @@ button.cerrar:hover {
     color: var(--texto);
 }
 
-.dos-columnas {
+.tres-columnas {
     display: grid;
-    grid-template-columns: 1fr 1fr;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
     gap: 0 12px;
 }
 
@@ -466,36 +546,10 @@ button.cerrar:hover {
     width: auto;
 }
 
-/* Los filtros se reparten en columnas y bajan de línea cuando no caben. */
-.filtros {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
-    gap: 8px;
-    margin-bottom: 12px;
-}
-
-.filtros select,
-.filtros input {
-    min-width: 0;
-    margin-top: 0;
-}
-
-/* El buscador, en su propia línea debajo de los desplegables. */
-.filtros input[type="search"] {
-    grid-column: 1 / -1;
-}
-
-.post {
-    padding: 16px 0;
-    border-top: 1px solid var(--borde);
-}
-
-.post:first-child {
-    border-top: 0;
-}
-
-/* Círculo con la foto de perfil o, si no hay, las iniciales. El tamaño llega en --tamano. */
+/* Foto de perfil o, si no hay, las iniciales, en un círculo: es lo único redondo junto al escudo.
+   El tamaño llega en --tamano. */
 .avatar {
+    border-radius: 50%;
     display: inline-flex;
     flex-shrink: 0;
     align-items: center;
@@ -503,7 +557,6 @@ button.cerrar:hover {
     width: var(--tamano, 36px);
     height: var(--tamano, 36px);
     overflow: hidden;
-    border-radius: 50%;
     color: #fff;
     font-size: calc(var(--tamano, 36px) * 0.4);
     font-weight: 700;
@@ -521,7 +574,7 @@ button.cerrar:hover {
     display: flex;
     align-items: center;
     gap: 10px;
-    margin-bottom: 8px;
+    margin-bottom: 10px;
 }
 
 .autor strong {
@@ -535,8 +588,6 @@ button.cerrar:hover {
 }
 
 .enlace-perfil {
-    display: inline-flex;
-    align-items: center;
     gap: 8px;
 }
 
@@ -556,9 +607,13 @@ button.cerrar:hover {
     flex-wrap: wrap;
 }
 
+#vista-perfil {
+    max-width: 720px;
+}
+
 .post h3 {
-    margin: 0 0 4px;
-    font-size: 1rem;
+    margin: 0 0 6px;
+    font-size: 1.05rem;
     overflow-wrap: anywhere;
 }
 
@@ -572,13 +627,14 @@ button.cerrar:hover {
 }
 
 .post-contenido {
-    margin: 8px 0 0;
+    margin: 10px 0 0;
     white-space: pre-line;
     overflow-wrap: anywhere;
 }
 
 .post .botones {
-    margin-top: 10px;
+    flex-wrap: wrap;
+    margin-top: 12px;
 }
 
 .post .botones button {
@@ -591,7 +647,7 @@ button.cerrar:hover {
     flex-wrap: wrap;
     align-items: flex-start;
     gap: 10px;
-    margin-top: 10px;
+    margin-top: 12px;
 }
 
 .adjunto {
@@ -611,7 +667,6 @@ button.cerrar:hover {
     width: 100%;
     aspect-ratio: 16 / 9;
     border: 0;
-    border-radius: 8px;
     background: var(--fondo);
 }
 
@@ -621,7 +676,6 @@ button.cerrar:hover {
     height: 90px;
     object-fit: cover;
     border: 1px solid var(--borde);
-    border-radius: 6px;
     background: var(--fondo);
 }
 
@@ -643,9 +697,9 @@ button.cerrar:hover {
 }
 
 .comentarios {
-    margin-top: 10px;
+    margin-top: 12px;
     padding: 12px;
-    border-radius: 8px;
+    border-left: 3px solid var(--borde);
     background: var(--fondo);
 }
 
@@ -818,6 +872,28 @@ button.cerrar:hover {
     white-space: nowrap;
 }
 
+/* Pantallas medianas: la columna lateral pasa arriba, con los filtros en fila. */
+@media (max-width: 960px) {
+    .con-lateral {
+        grid-template-columns: minmax(0, 1fr);
+        gap: 16px;
+    }
+
+    .lateral {
+        position: static;
+    }
+
+    .filtros {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+        gap: 12px;
+    }
+
+    .filtros label {
+        margin-bottom: 0;
+    }
+}
+
 /* Pantallas estrechas: el menú se convierte en una lista que se despliega bajo la cabecera. */
 @media (max-width: 820px) {
     .con-sesion .boton-menu {
@@ -836,19 +912,37 @@ button.cerrar:hover {
         display: flex;
         flex-direction: column;
         align-items: stretch;
-        padding: 8px 16px 16px;
-        background: var(--primario-oscuro);
+        margin: 0;
+        padding: 8px 0 12px;
+        border-bottom: 4px solid var(--primario-oscuro);
+        background: var(--primario);
         box-shadow: 0 8px 16px rgb(0 0 0 / 20%);
     }
 
     .menu a,
     .menu button {
-        padding: 12px;
+        padding: 12px 24px;
+        border-bottom: 0;
+        border-left: 4px solid transparent;
+        margin: 0;
         text-align: left;
     }
 
+    .menu a.activa {
+        border-left-color: #fff;
+    }
+
     .menu button {
-        margin: 8px 0 0;
+        margin-top: 8px;
+        border-top: 1px solid rgb(255 255 255 / 30%);
+    }
+
+    main {
+        padding: 16px;
+    }
+
+    .cabecera-contenido {
+        padding: 10px 16px;
     }
 }
 
@@ -859,7 +953,11 @@ button.cerrar:hover {
     }
 
     .marca-titulo {
-        font-size: 1rem;
+        font-size: 0.95rem;
+    }
+
+    .rejilla-posts {
+        grid-template-columns: minmax(0, 1fr);
     }
 
     .form-comentario {
@@ -867,8 +965,8 @@ button.cerrar:hover {
         align-items: stretch;
     }
 
-    .dos-columnas {
-        grid-template-columns: 1fr;
+    .tres-columnas {
+        grid-template-columns: minmax(0, 1fr);
     }
 
     .dialogo {
@@ -916,14 +1014,4 @@ button.cerrar:hover {
     .tabla-usuarios tbody tr:hover td {
         background: none;
     }
-}
-
-.etiqueta.activo {
-    background: var(--ok-fondo);
-    color: var(--ok);
-}
-
-.etiqueta.inactivo {
-    background: var(--pendiente-fondo);
-    color: var(--pendiente);
 }

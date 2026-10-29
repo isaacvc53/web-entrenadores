@@ -22,7 +22,7 @@ class User extends Authenticatable
     /**
      * Roles posibles (los mismos que la columna rol de la tabla users).
      */
-    public const ROLES = ['admin', 'entrenador', 'consulta'];
+    public const ROLES = ['admin', 'entrenador'];
 
     /**
      * La columna que guarda el hash de la contraseña.

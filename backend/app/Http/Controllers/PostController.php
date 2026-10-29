@@ -7,7 +7,6 @@ use App\Models\Post;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
-use Illuminate\Validation\Rule;
 
 class PostController extends Controller
 {
@@ -23,7 +22,7 @@ class PostController extends Controller
     ];
 
     /**
-     * Lista las publicaciones que el usuario puede ver, de la más reciente a la más antigua, con filtros opcionales.
+     * Lista las publicaciones, de la más reciente a la más antigua, con filtros opcionales.
      */
     public function index(Request $request): JsonResponse
     {
@@ -36,7 +35,6 @@ class PostController extends Controller
         ]);
 
         $posts = Post::query()
-            ->visiblePara($request->user())
             ->with(self::RELACIONES)
             ->withCount($this->contadorDeComentarios())
             ->when($filtros['type_id'] ?? null, fn ($query, $typeId) => $query->where('type_id', $typeId))
@@ -129,7 +127,6 @@ class PostController extends Controller
             'type_id' => [$obligatorio, 'integer', 'exists:post_types,id'],
             'team_id' => ['nullable', 'integer', 'exists:teams,id'],
             'temporada' => ['nullable', 'string', 'max:20'],
-            'visibilidad' => ['sometimes', Rule::in(Post::VISIBILIDADES)],
         ];
     }
 

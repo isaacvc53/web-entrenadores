@@ -10,14 +10,10 @@ use Illuminate\Auth\Access\Response;
 class CommentPolicy
 {
     /**
-     * Comentan entrenadores y administradores, en las publicaciones que pueden ver.
+     * Se puede comentar en cualquier publicación que se pueda ver.
      */
     public function create(User $user, Post $post): Response
     {
-        if (! in_array($user->rol, ['admin', 'entrenador'], true)) {
-            return Response::deny('No tienes permiso para comentar.');
-        }
-
         return (new PostPolicy)->view($user, $post);
     }
 

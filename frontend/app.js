@@ -16,12 +16,11 @@ const MAX_BYTES_ADJUNTO = 10 * 1024 * 1024;
 const NOMBRES_ROL = {
     admin: 'Administrador',
     entrenador: 'Entrenador',
-    consulta: 'Consulta',
 };
 
 let usuario = null;
 let postEditando = null;
-let catalogo = { categorias: [], tipos: [], visibilidades: [], equipos: [], temporadas: [] };
+let catalogo = { categorias: [], tipos: [], equipos: [], temporadas: [] };
 let urlsDeAdjuntos = [];
 
 // --- Llamadas a la API ---
@@ -205,7 +204,6 @@ function mostrarSesion() {
         cargarUsuarios();
     }
 
-    $('boton-nueva').hidden = usuario.rol === 'consulta';
     cerrarFormPost();
     cargarCategorias();
     cargarPosts();
@@ -849,11 +847,6 @@ async function copiarTemporada(datos) {
 
 // --- Publicaciones ---
 
-const ETIQUETAS_VISIBILIDAD = {
-    entrenadores: 'Solo entrenadores',
-    todos: 'Todos los usuarios',
-};
-
 function opcion(valor, texto) {
     const elemento = document.createElement('option');
     elemento.value = valor;
@@ -888,7 +881,7 @@ function opcionesDeEquipos(equipos) {
     });
 }
 
-// Carga categorías, tipos, visibilidades y equipos, y rellena todos los desplegables.
+// Carga categorías, tipos, equipos y temporadas, y rellena todos los desplegables.
 async function cargarCategorias() {
     try {
         catalogo = await api('/categories');
@@ -897,10 +890,6 @@ async function cargarCategorias() {
 
         rellenarDesplegable($('post-tipo'), tipos());
         rellenarDesplegable($('filtro-tipo'), [opcion('', 'Todos los tipos'), ...tipos()]);
-        rellenarDesplegable(
-            $('post-visibilidad'),
-            catalogo.visibilidades.map((v) => opcion(v, ETIQUETAS_VISIBILIDAD[v] ?? v)),
-        );
         rellenarDesplegable($('post-equipo'), [opcion('', 'Sin equipo'), ...opcionesDeEquipos(catalogo.equipos)]);
         rellenarDesplegable($('filtro-equipo'), [opcion('', 'Todos los equipos'), ...opcionesDeEquipos(catalogo.equipos)]);
 
@@ -975,7 +964,6 @@ function tarjetaDePost(post) {
     const detalles = [
         post.team && `${post.team.nombre} (${post.team.category?.nombre ?? 'sin categoría'})`,
         post.temporada,
-        ETIQUETAS_VISIBILIDAD[post.visibilidad],
     ].filter(Boolean);
 
     const meta = document.createElement('div');
@@ -1055,31 +1043,28 @@ function seccionDeComentarios(post) {
 
     seccion.append(lista, vacio);
 
-    // El rol de consulta puede leer, pero no comentar.
-    if (usuario.rol !== 'consulta') {
-        const formulario = document.createElement('form');
-        formulario.className = 'form-comentario';
-        formulario.noValidate = true;
+    const formulario = document.createElement('form');
+    formulario.className = 'form-comentario';
+    formulario.noValidate = true;
 
-        const texto = document.createElement('textarea');
-        texto.name = 'contenido';
-        texto.rows = 2;
-        texto.maxLength = 2000;
-        texto.placeholder = 'Escribe un comentario';
-        texto.setAttribute('aria-label', 'Comentario');
+    const texto = document.createElement('textarea');
+    texto.name = 'contenido';
+    texto.rows = 2;
+    texto.maxLength = 2000;
+    texto.placeholder = 'Escribe un comentario';
+    texto.setAttribute('aria-label', 'Comentario');
 
-        const enviarBoton = document.createElement('button');
-        enviarBoton.type = 'submit';
-        enviarBoton.className = 'principal';
-        enviarBoton.textContent = 'Comentar';
+    const enviarBoton = document.createElement('button');
+    enviarBoton.type = 'submit';
+    enviarBoton.className = 'principal';
+    enviarBoton.textContent = 'Comentar';
 
-        formulario.append(texto, enviarBoton);
-        formulario.addEventListener('submit', (evento) => {
-            evento.preventDefault();
-            enviar(formulario, (datos) => comentar(post, seccion, datos));
-        });
-        seccion.append(formulario);
-    }
+    formulario.append(texto, enviarBoton);
+    formulario.addEventListener('submit', (evento) => {
+        evento.preventDefault();
+        enviar(formulario, (datos) => comentar(post, seccion, datos));
+    });
+    seccion.append(formulario);
 
     return seccion;
 }
@@ -1373,7 +1358,6 @@ function abrirFormPost(post = null) {
     if (post) {
         formulario.titulo.value = post.titulo;
         formulario.type_id.value = post.type_id;
-        formulario.visibilidad.value = post.visibilidad;
         formulario.team_id.value = post.team_id ?? '';
         formulario.temporada.value = post.temporada ?? '';
         formulario.contenido.value = post.contenido ?? '';
