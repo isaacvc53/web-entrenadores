@@ -20,7 +20,7 @@ const NOMBRES_ROL = {
 
 let usuario = null;
 let postEditando = null;
-let catalogo = { categorias: [], tipos: [], equipos: [], temporadas: [] };
+let catalogo = { categorias: [], tipos: [], equipos: [], temporadas: [], etiquetas: [] };
 let urlsDeAdjuntos = [];
 
 // --- Llamadas a la API ---
@@ -52,6 +52,15 @@ async function peticion(ruta, { metodo = 'GET', datos } = {}) {
 
     if (!respuesta.ok) {
         const cuerpo = await respuesta.json().catch(() => ({}));
+
+        // Con sesión iniciada, un 401 quiere decir que la sesión ha caducado (dura 30 días)
+        // o que se ha cerrado desde otro sitio: se vuelve a la pantalla de entrar.
+        if (respuesta.status === 401 && token) {
+            sessionStorage.removeItem(CLAVE_TOKEN);
+            mostrarAcceso();
+        }
+
+
         throw new ErrorApi(respuesta.status, mensajeDeError(respuesta.status, cuerpo));
     }
 
@@ -168,7 +177,8 @@ function mensajeDeError(estado, cuerpo) {
         return 'Demasiados intentos. Espera un minuto y vuelve a probar.';
     }
     if (cuerpo.errors) {
-        return Object.values(cuerpo.errors).flat().join('\n');
+        // Sin repetir: dos etiquetas iguales, por ejemplo, dan el mismo error dos veces.
+        return [...new Set(Object.values(cuerpo.errors).flat())].join('\n');
     }
     if (estado === 404) {
         return 'No se ha encontrado. Puede que se haya borrado.';
@@ -545,6 +555,7 @@ function pintarAdministracion() {
     }
 
     pintarEquipos();
+    pintarEtiquetasAdmin();
 }
 
 // Ejecuta una acción desde un botón: lo desactiva mientras tanto y muestra el error si falla.
@@ -655,6 +666,86 @@ async function crearElementoEditable(conf, datos) {
     await api(conf.ruta, { metodo: 'POST', datos: { nombre } });
     $(conf.formulario).reset();
     await recargarTrasCambio(`«${nombre}» añadido.`);
+}
+
+// --- Administración: etiquetas ---
+
+function pintarEtiquetasAdmin() {
+    $('lista-etiquetas').replaceChildren(...catalogo.etiquetas.map(filaDeEtiqueta));
+    $('sin-etiquetas').hidden = catalogo.etiquetas.length > 0;
+}
+
+function textoDePublicaciones(total) {
+    return total === 1 ? '1 publicación' : `${total} publicaciones`;
+}
+
+// Cada etiqueta: nombre editable, casilla de la lista fija, cuántas publicaciones la tienen, Guardar y Borrar.
+function filaDeEtiqueta(etiqueta) {
+    const fila = document.createElement('form');
+    fila.className = 'fila-editable fila-etiqueta';
+    fila.noValidate = true;
+
+    const nombre = document.createElement('input');
+    nombre.type = 'text';
+    nombre.name = 'nombre';
+    nombre.maxLength = 30;
+    nombre.value = etiqueta.nombre;
+    nombre.setAttribute('aria-label', 'Nombre');
+
+    const fija = document.createElement('input');
+    fija.type = 'checkbox';
+    fija.name = 'fija';
+    fija.checked = etiqueta.fija;
+
+    const casilla = document.createElement('label');
+    casilla.className = 'casilla';
+    casilla.append(fija, 'Lista fija');
+
+    const uso = document.createElement('span');
+    uso.className = 'nota';
+    uso.textContent = textoDePublicaciones(etiqueta.posts_count);
+
+    const guardar = document.createElement('button');
+    guardar.type = 'submit';
+    guardar.textContent = 'Guardar';
+
+    const borrar = document.createElement('button');
+    borrar.type = 'button';
+    borrar.textContent = 'Borrar';
+    borrar.addEventListener('click', () => {
+        const aviso = etiqueta.posts_count
+            ? ` La tienen ${textoDePublicaciones(etiqueta.posts_count)}, que se quedarán sin ella.`
+            : '';
+
+        if (confirm(`¿Borrar la etiqueta «${etiqueta.nombre}»?${aviso}`)) {
+            conBoton(borrar, async () => {
+                const respuesta = await api(`/tags/${etiqueta.id}`, { metodo: 'DELETE' });
+                await recargarTrasCambio(respuesta.message);
+            });
+        }
+    });
+
+    fila.append(nombre, casilla, uso, guardar, borrar);
+    fila.addEventListener('submit', (evento) => {
+        evento.preventDefault();
+        enviar(fila, async (datos) => {
+            await api(`/tags/${etiqueta.id}`, {
+                metodo: 'PUT',
+                datos: { nombre: datos.nombre.trim(), fija: fija.checked },
+            });
+            await recargarTrasCambio(`«${datos.nombre.trim()}» guardada.`);
+        });
+    });
+
+    return fila;
+}
+
+async function crearEtiquetaFija(datos) {
+    const nombre = datos.nombre.trim();
+
+    await api('/tags', { metodo: 'POST', datos: { nombre } });
+    $('form-etiqueta').reset();
+    await recargarTrasCambio(`«${nombre}» añadida a la lista fija.`);
 }
 
 // La temporada siguiente a "2026-27" es "2027-28", y a "2026-2027", "2027-2028".
@@ -943,7 +1034,22 @@ function opcionesDeEquipos(equipos) {
     });
 }
 
-// Carga categorías, tipos, equipos y temporadas, y rellena todos los desplegables.
+// Opciones de etiqueta: primero las de la lista fija y después las de los entrenadores.
+function opcionesDeEtiquetas(etiquetas) {
+    const grupos = [
+        ['Lista fija', etiquetas.filter((e) => e.fija)],
+        ['De los entrenadores', etiquetas.filter((e) => !e.fija)],
+    ].filter(([, lista]) => lista.length);
+
+    return grupos.map(([titulo, lista]) => {
+        const grupo = document.createElement('optgroup');
+        grupo.label = titulo;
+        grupo.append(...lista.map((e) => opcion(e.id, e.nombre)));
+        return grupo;
+    });
+}
+
+// Carga categorías, tipos, equipos, temporadas y etiquetas, y rellena todos los desplegables.
 async function cargarCategorias() {
     try {
         catalogo = await api('/categories');
@@ -954,10 +1060,14 @@ async function cargarCategorias() {
         rellenarDesplegable($('post-equipo'), [opcion('', 'Sin equipo'), ...opcionesDeEquipos(catalogo.equipos)]);
 
         // Los filtros de Publicaciones y los de Recursos tienen las mismas opciones.
-        for (const [tipo, equipo, temporada] of [
-            ['filtro-tipo', 'filtro-equipo', 'filtro-temporada'],
-            ['recursos-tipo', 'recursos-equipo', 'recursos-temporada'],
+        for (const [tipo, equipo, temporada, etiqueta] of [
+            ['filtro-tipo', 'filtro-equipo', 'filtro-temporada', 'filtro-etiqueta'],
+            ['recursos-tipo', 'recursos-equipo', 'recursos-temporada', 'recursos-etiqueta'],
         ]) {
+            rellenarDesplegable(
+                $(etiqueta),
+                [opcion('', 'Todas las etiquetas'), ...opcionesDeEtiquetas(catalogo.etiquetas)],
+            );
             rellenarDesplegable($(tipo), [opcion('', 'Todos los tipos'), ...tipos()]);
             rellenarDesplegable($(equipo), [opcion('', 'Todos los equipos'), ...opcionesDeEquipos(catalogo.equipos)]);
             rellenarDesplegable(
@@ -985,6 +1095,7 @@ async function cargarPosts(siguiente = false) {
         type_id: $('filtro-tipo').value,
         team_id: $('filtro-equipo').value,
         temporada: $('filtro-temporada').value,
+        tag_id: $('filtro-etiqueta').value,
         user_id: $('filtro-mias').checked ? usuario.id : '',
         q: $('filtro-q').value.trim(),
         page: siguiente ? paginaPosts + 1 : 1,
@@ -1061,6 +1172,10 @@ function tarjetaDePost(post, enVentana = false) {
 
     tarjeta.append(autor, titulo, meta);
 
+    if (post.tags?.length) {
+        tarjeta.append(etiquetasDePost(post.tags, enVentana));
+    }
+
     if (post.contenido) {
         const contenido = document.createElement('p');
         contenido.className = 'post-contenido';
@@ -1104,6 +1219,42 @@ function tarjetaDePost(post, enVentana = false) {
     tarjeta.append(botones, comentarios);
 
     return tarjeta;
+}
+
+// En la lista, cada etiqueta es un botón que filtra las publicaciones por ella.
+// En la ventana de Recursos solo se muestran.
+function etiquetasDePost(etiquetas, enVentana) {
+    const lista = document.createElement('div');
+    lista.className = 'etiquetas-post';
+
+    lista.append(...etiquetas.map((etiqueta) => {
+        const elemento = document.createElement(enVentana ? 'span' : 'button');
+        elemento.className = 'chip';
+        elemento.textContent = `#${etiqueta.nombre}`;
+
+        if (!enVentana) {
+            elemento.type = 'button';
+            elemento.title = `Ver las publicaciones con «${etiqueta.nombre}»`;
+            elemento.addEventListener('click', () => filtrarPorEtiqueta(etiqueta.id));
+        }
+
+        return elemento;
+    }));
+
+    return lista;
+}
+
+async function filtrarPorEtiqueta(id) {
+    const filtro = $('filtro-etiqueta');
+
+    // Si otro entrenador la ha creado hace poco, puede que aún no esté en el desplegable.
+    if (![...filtro.options].some((o) => o.value === String(id))) {
+        await cargarCategorias();
+    }
+
+    filtro.value = id;
+    cargarPosts();
+    window.scrollTo(0, 0);
 }
 
 // --- Comentarios ---
@@ -1489,6 +1640,8 @@ function abrirFormPost(post = null) {
         formulario.contenido.value = post.contenido ?? '';
     }
 
+    pintarSelectorEtiquetas(post?.tags?.map((t) => t.nombre) ?? []);
+
     $('titulo-form-post').textContent = post ? 'Editar publicación' : 'Nueva publicación';
     $('boton-guardar-post').textContent = post ? 'Guardar cambios' : 'Publicar';
     $('dialogo-post').showModal();
@@ -1506,6 +1659,78 @@ function alCerrarFormPost() {
     postEditando = null;
     $('form-post').reset();
     $('aviso-post').hidden = true;
+}
+
+// --- Etiquetas del formulario ---
+
+// Sin espacios de más, igual que hace el servidor.
+function limpiarNombreDeEtiqueta(nombre) {
+    return nombre.trim().replace(/\s+/g, ' ');
+}
+
+// Para comparar sin mayúsculas ni tildes, como la base de datos: "tactica" es la misma que "Táctica".
+function claveDeEtiqueta(nombre) {
+    return limpiarNombreDeEtiqueta(nombre).normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
+}
+
+// Cada etiqueta es una casilla con forma de botón; marcada se ve en rojo.
+function casillaDeEtiqueta(nombre, marcada) {
+    const casilla = document.createElement('input');
+    casilla.type = 'checkbox';
+    casilla.value = nombre;
+    casilla.checked = marcada;
+
+    const texto = document.createElement('span');
+    texto.textContent = nombre;
+
+    const etiqueta = document.createElement('label');
+    etiqueta.className = 'chip-casilla';
+    etiqueta.append(casilla, texto);
+    return etiqueta;
+}
+
+// Muestra todas las etiquetas que existen (primero las fijas) con las de la publicación ya marcadas.
+function pintarSelectorEtiquetas(marcadas) {
+    const claves = new Set(marcadas.map(claveDeEtiqueta));
+    const existentes = new Set(catalogo.etiquetas.map((e) => claveDeEtiqueta(e.nombre)));
+
+    $('post-etiquetas').replaceChildren(
+        ...catalogo.etiquetas.map((e) => casillaDeEtiqueta(e.nombre, claves.has(claveDeEtiqueta(e.nombre)))),
+        // Por si alguna de la publicación aún no estaba en el catálogo cargado.
+        ...marcadas.filter((n) => !existentes.has(claveDeEtiqueta(n))).map((n) => casillaDeEtiqueta(n, true)),
+    );
+}
+
+// Añade lo escrito en "Otra etiqueta": si ya existe, la marca; si no, la añade marcada.
+function anadirEtiqueta({ enfocar = true } = {}) {
+    const entrada = $('post-etiqueta-nueva');
+    const nombre = limpiarNombreDeEtiqueta(entrada.value);
+
+    if (!nombre) {
+        return;
+    }
+
+    const existente = [...$('post-etiquetas').querySelectorAll('input')]
+        .find((casilla) => claveDeEtiqueta(casilla.value) === claveDeEtiqueta(nombre));
+
+    if (existente) {
+        existente.checked = true;
+    } else {
+        $('post-etiquetas').append(casillaDeEtiqueta(nombre, true));
+    }
+
+    entrada.value = '';
+
+    if (enfocar) {
+        entrada.focus();
+    }
+}
+
+function etiquetasElegidas() {
+    // Si se ha escrito una y no se ha pulsado "Añadir", también cuenta.
+    anadirEtiqueta({ enfocar: false });
+
+    return [...$('post-etiquetas').querySelectorAll('input:checked')].map((casilla) => casilla.value);
 }
 
 // Al elegir equipo, si la temporada está vacía se rellena con la del equipo.
@@ -1527,6 +1752,7 @@ async function guardarPost(datos) {
         temporada: campos.temporada.trim() || null,
         type_id: Number(campos.type_id),
         team_id: campos.team_id ? Number(campos.team_id) : null,
+        etiquetas: etiquetasElegidas(),
     };
 
     const post = postEditando
@@ -1536,6 +1762,8 @@ async function guardarPost(datos) {
     const fallos = await subirAdjuntos(post.id, archivos, enlace.trim());
 
     cerrarFormPost();
+    // Puede haber etiquetas nuevas, o alguna que se ha borrado al dejar de usarse.
+    await cargarCategorias();
     await cargarPosts();
 
     if (fallos.length) {
@@ -1560,6 +1788,7 @@ async function eliminarPost(post, boton) {
             cerrarFormPost();
         }
         avisar(respuesta.message);
+        await cargarCategorias();
         await cargarPosts();
     } catch (error) {
         avisar(error.message, 'error');
@@ -1589,6 +1818,7 @@ async function cargarRecursos(siguiente = false) {
         type_id: $('recursos-tipo').value,
         team_id: $('recursos-equipo').value,
         temporada: $('recursos-temporada').value,
+        tag_id: $('recursos-etiqueta').value,
         user_id: $('recursos-mias').checked ? usuario.id : '',
         q: $('recursos-q').value.trim(),
         page: siguiente ? paginaRecursos + 1 : 1,
@@ -1856,8 +2086,22 @@ $('boton-cancelar-post').addEventListener('click', cerrarFormPost);
 $('boton-cerrar-post').addEventListener('click', cerrarFormPost);
 $('dialogo-post').addEventListener('close', alCerrarFormPost);
 $('post-equipo').addEventListener('change', alElegirEquipo);
+$('boton-anadir-etiqueta').addEventListener('click', () => anadirEtiqueta());
 
-for (const filtro of ['filtro-tipo', 'filtro-equipo', 'filtro-temporada', 'filtro-mias']) {
+// Enter en "Otra etiqueta" la añade, en vez de enviar la publicación.
+$('post-etiqueta-nueva').addEventListener('keydown', (evento) => {
+    if (evento.key === 'Enter') {
+        evento.preventDefault();
+        anadirEtiqueta();
+    }
+});
+
+$('form-etiqueta').addEventListener('submit', (evento) => {
+    evento.preventDefault();
+    enviar(evento.target, crearEtiquetaFija);
+});
+
+for (const filtro of ['filtro-tipo', 'filtro-equipo', 'filtro-temporada', 'filtro-etiqueta', 'filtro-mias']) {
     $(filtro).addEventListener('change', () => cargarPosts());
 }
 
@@ -1880,7 +2124,7 @@ $('form-post').addEventListener('submit', (evento) => {
     enviar(evento.target, guardarPost);
 });
 
-for (const filtro of ['recursos-clase', 'recursos-tipo', 'recursos-equipo', 'recursos-temporada', 'recursos-mias']) {
+for (const filtro of ['recursos-clase', 'recursos-tipo', 'recursos-equipo', 'recursos-temporada', 'recursos-etiqueta', 'recursos-mias']) {
     $(filtro).addEventListener('change', recargarRecursos);
 }
 

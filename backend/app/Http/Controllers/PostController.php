@@ -4,8 +4,12 @@ namespace App\Http\Controllers;
 
 use App\Models\AuditLog;
 use App\Models\Post;
+use App\Models\Tag;
+use App\Models\User;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Arr;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
 
 class PostController extends Controller
@@ -19,7 +23,15 @@ class PostController extends Controller
         'team:id,nombre,category_id',
         'team.category:id,nombre',
         'media',
+        'tags:id,nombre,fija',
     ];
+
+    /**
+     * Máximo de etiquetas por publicación y de caracteres por etiqueta.
+     */
+    private const MAX_ETIQUETAS = 10;
+
+    private const MAX_LARGO_ETIQUETA = 30;
 
     /**
      * Lista las publicaciones, de la más reciente a la más antigua, con filtros opcionales.
@@ -30,6 +42,7 @@ class PostController extends Controller
             'type_id' => ['sometimes', 'integer'],
             'team_id' => ['sometimes', 'integer'],
             'temporada' => ['sometimes', 'string', 'max:20'],
+            'tag_id' => ['sometimes', 'integer'],
             'user_id' => ['sometimes', 'integer'],
             'q' => ['sometimes', 'string', 'max:100'],
         ]);
@@ -54,9 +67,15 @@ class PostController extends Controller
 
         $data = $request->validate($this->reglas());
 
-        $post = new Post($data);
-        $post->user_id = $request->user()->id;
-        $post->save();
+        $post = DB::transaction(function () use ($data, $request) {
+            $post = new Post(Arr::except($data, 'etiquetas'));
+            $post->user_id = $request->user()->id;
+            $post->save();
+
+            $this->guardarEtiquetas($post, $data['etiquetas'] ?? [], $request->user());
+
+            return $post;
+        });
 
         return response()->json($this->conRelaciones($post->refresh()), 201);
     }
@@ -78,7 +97,16 @@ class PostController extends Controller
     {
         Gate::authorize('update', $post);
 
-        $post->update($request->validate($this->reglas(parcial: true)));
+        $data = $request->validate($this->reglas(parcial: true));
+
+        DB::transaction(function () use ($post, $data, $request) {
+            $post->update(Arr::except($data, 'etiquetas'));
+
+            // Si no se envían las etiquetas, se quedan como estaban.
+            if (array_key_exists('etiquetas', $data)) {
+                $this->guardarEtiquetas($post, $data['etiquetas'] ?? [], $request->user());
+            }
+        });
 
         return response()->json($this->conRelaciones($post));
     }
@@ -119,7 +147,42 @@ class PostController extends Controller
             'type_id' => [$obligatorio, 'integer', 'exists:post_types,id'],
             'team_id' => ['nullable', 'integer', 'exists:teams,id'],
             'temporada' => ['nullable', 'string', 'max:20'],
+            // Nombres de etiqueta; las que no existen se crean.
+            'etiquetas' => ['sometimes', 'nullable', 'array', 'max:'.self::MAX_ETIQUETAS],
+            'etiquetas.*' => ['required', 'string', 'max:'.self::MAX_LARGO_ETIQUETA, 'distinct:ignore_case'],
         ];
+    }
+
+    /**
+     * Deja en la publicación exactamente estas etiquetas. Las que aún no existen se crean
+     * a nombre del usuario, y las de los entrenadores que se quedan sin uso se borran.
+     *
+     * @param  array<int, string>  $nombres
+     */
+    private function guardarEtiquetas(Post $post, array $nombres, User $user): void
+    {
+        $ids = collect($nombres)
+            // Sin espacios de más, para que "Balón  parado" y "Balón parado" sean la misma.
+            ->map(fn (string $nombre) => preg_replace('/\s+/u', ' ', trim($nombre)))
+            ->filter()
+            ->map(function (string $nombre) use ($user) {
+                // La base de datos no distingue mayúsculas ni tildes al comparar,
+                // así que "tactica" encuentra la etiqueta "Táctica" que ya existe.
+                $etiqueta = Tag::firstWhere('nombre', $nombre);
+
+                if (! $etiqueta) {
+                    $etiqueta = new Tag(['nombre' => $nombre]);
+                    $etiqueta->user_id = $user->id;
+                    $etiqueta->save();
+                }
+
+                return $etiqueta->id;
+            })
+            ->unique();
+
+        $post->tags()->sync($ids);
+
+        Tag::borrarSinUso();
     }
 
     private function conRelaciones(Post $post): Post

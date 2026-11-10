@@ -7,11 +7,13 @@ use App\Http\Controllers\MediaController;
 use App\Http\Controllers\PostController;
 use App\Http\Controllers\PostTypeController;
 use App\Http\Controllers\ProfilePhotoController;
+use App\Http\Controllers\TagController;
 use App\Http\Controllers\TeamController;
 use App\Http\Controllers\UserController;
 use App\Models\Category;
 use App\Models\Post;
 use App\Models\PostType;
+use App\Models\Tag;
 use App\Models\Team;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -67,6 +69,8 @@ Route::middleware(['auth:sanctum', 'activo'])->group(function () {
                 ->orderBy('nombre')
                 ->get(['id', 'nombre', 'category_id', 'temporada']),
             'temporadas' => $temporadas,
+            // Con cuántas publicaciones la usan, para el panel de administración.
+            'etiquetas' => Tag::ordenadas()->select(['id', 'nombre', 'fija'])->withCount('posts')->get(),
         ];
     });
 
@@ -99,6 +103,10 @@ Route::middleware(['auth:sanctum', 'activo'])->group(function () {
         Route::put('/post-types/order', [PostTypeController::class, 'reorder']);
         Route::put('/post-types/{postType}', [PostTypeController::class, 'update']);
         Route::delete('/post-types/{postType}', [PostTypeController::class, 'destroy']);
+
+        Route::post('/tags', [TagController::class, 'store']);
+        Route::put('/tags/{tag}', [TagController::class, 'update']);
+        Route::delete('/tags/{tag}', [TagController::class, 'destroy']);
 
         Route::post('/teams', [TeamController::class, 'store']);
         Route::post('/teams/copy-season', [TeamController::class, 'copySeason']);

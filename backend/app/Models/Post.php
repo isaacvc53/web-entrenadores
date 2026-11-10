@@ -6,6 +6,7 @@ use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Facades\Storage;
 
@@ -20,10 +21,13 @@ class Post extends Model
         static::deleting(function (Post $post) {
             Storage::deleteDirectory("media/{$post->id}");
         });
+
+        // Las etiquetas de los entrenadores que solo usaba esta publicación ya no hacen falta.
+        static::deleted(fn () => Tag::borrarSinUso());
     }
 
     /**
-     * Filtra por tipo, equipo, temporada, autor y texto del título; los filtros que no llegan no se aplican.
+     * Filtra por tipo, equipo, temporada, etiqueta, autor y texto del título; los filtros que no llegan no se aplican.
      * Lo usan la lista de publicaciones y la de recursos.
      *
      * @param  Builder<Post>  $query
@@ -39,6 +43,9 @@ class Post extends Model
                 fn ($query) => $query->where('temporada', $temporada)
                     ->orWhereHas('team', fn ($query) => $query->where('temporada', $temporada))
             ))
+            ->when($filtros['tag_id'] ?? null, fn ($query, $tagId) => $query->whereHas(
+                'tags', fn ($query) => $query->whereKey($tagId)
+            ))
             ->when($filtros['user_id'] ?? null, fn ($query, $userId) => $query->where('user_id', $userId))
             ->when($filtros['q'] ?? null, fn ($query, $q) => $query->whereLike('titulo', '%'.$q.'%'));
     }
@@ -49,6 +56,14 @@ class Post extends Model
     public function media(): HasMany
     {
         return $this->hasMany(Media::class);
+    }
+
+    /**
+     * @return BelongsToMany<Tag, $this>
+     */
+    public function tags(): BelongsToMany
+    {
+        return $this->belongsToMany(Tag::class, 'post_tags');
     }
 
     /**

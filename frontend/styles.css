@@ -1096,6 +1096,113 @@ button.ampliar {
     white-space: nowrap;
 }
 
+/* --- Etiquetas --- */
+
+/* En cada publicación, debajo del tipo y el equipo. Son botones que filtran por esa etiqueta. */
+.etiquetas-post {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-top: 8px;
+}
+
+.chip {
+    padding: 2px 8px;
+    border: 1px solid var(--borde);
+    background: var(--fondo);
+    color: var(--texto-suave);
+    font-size: 0.8rem;
+    font-weight: 600;
+}
+
+button.chip:hover {
+    border-color: var(--primario);
+    color: var(--primario);
+}
+
+/* En el formulario: un recuadro sin borde, con el título igual que el de los demás campos. */
+.campo-etiquetas {
+    margin: 0 0 14px;
+    padding: 0;
+    border: 0;
+    min-width: 0;
+}
+
+.campo-etiquetas legend {
+    padding: 0;
+    font-size: 0.9rem;
+    font-weight: 600;
+}
+
+.selector-etiquetas {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin: 4px 0 8px;
+}
+
+.selector-etiquetas:empty {
+    display: none;
+}
+
+/* Casilla con forma de botón: la casilla de verdad no se ve, pero sigue funcionando con el teclado. */
+.selector-etiquetas .chip-casilla {
+    position: relative;
+    margin: 0;
+    padding: 5px 10px;
+    border: 1px solid var(--borde);
+    background: #fff;
+    font-size: 0.85rem;
+    font-weight: 400;
+    cursor: pointer;
+}
+
+.chip-casilla input {
+    position: absolute;
+    opacity: 0;
+    width: 1px;
+    height: 1px;
+    margin: 0;
+}
+
+.chip-casilla:hover {
+    border-color: var(--texto-suave);
+}
+
+.chip-casilla:has(input:checked) {
+    border-color: var(--primario);
+    background: var(--primario);
+    color: #fff;
+}
+
+.chip-casilla:has(input:focus-visible) {
+    outline: 2px solid var(--primario);
+    outline-offset: 2px;
+}
+
+.campo-etiquetas .fila-nueva {
+    margin-bottom: 0;
+}
+
+.campo-etiquetas .fila-nueva button {
+    flex: 0 0 auto;
+}
+
+/* En el panel: la casilla "Lista fija" y el número de publicaciones, al lado del nombre. */
+.fila-etiqueta label.casilla {
+    margin: 0;
+    font-weight: 400;
+}
+
+.fila-etiqueta label.casilla input {
+    flex: none;
+}
+
+.fila-etiqueta .nota {
+    margin: 0;
+    min-width: 7em;
+}
+
 /* Pantallas medianas: la columna lateral pasa arriba, con los filtros en fila. */
 @media (max-width: 960px) {
     .con-lateral {

@@ -50,7 +50,8 @@ return [
     |
     */
 
-    'expiration' => null,
+    // Las sesiones caducan a los 30 días de entrar (en minutos). Después hay que volver a iniciar sesión.
+    'expiration' => (int) env('SANCTUM_EXPIRATION', 60 * 24 * 30),
 
     /*
     |--------------------------------------------------------------------------

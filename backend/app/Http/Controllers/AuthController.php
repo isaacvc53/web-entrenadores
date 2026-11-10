@@ -58,6 +58,11 @@ class AuthController extends Controller
             ], 403);
         }
 
+        // Se aprovecha para borrar sus sesiones ya caducadas, que solo ocupan sitio en la base de datos.
+        $user->tokens()
+            ->where('created_at', '<', now()->subMinutes(config('sanctum.expiration')))
+            ->delete();
+
         return response()->json([
             'token' => $user->createToken('api')->plainTextToken,
             'user' => $user,

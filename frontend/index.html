@@ -145,6 +145,10 @@
                             Temporada
                             <select id="filtro-temporada"></select>
                         </label>
+                        <label>
+                            Etiqueta
+                            <select id="filtro-etiqueta"></select>
+                        </label>
                         <label class="casilla">
                             <input type="checkbox" id="filtro-mias">
                             Solo mis publicaciones
@@ -189,6 +193,10 @@
                         <label>
                             Temporada
                             <select id="recursos-temporada"></select>
+                        </label>
+                        <label>
+                            Etiqueta
+                            <select id="recursos-etiqueta"></select>
                         </label>
                         <label class="casilla">
                             <input type="checkbox" id="recursos-mias">
@@ -251,6 +259,15 @@
                         Contenido
                         <textarea name="contenido" rows="5"></textarea>
                     </label>
+                    <fieldset class="campo-etiquetas">
+                        <legend>Etiquetas</legend>
+                        <div id="post-etiquetas" class="selector-etiquetas"></div>
+                        <div class="fila-nueva">
+                            <input type="text" id="post-etiqueta-nueva" maxlength="30" placeholder="Otra etiqueta" aria-label="Nueva etiqueta">
+                            <button type="button" id="boton-anadir-etiqueta">Añadir</button>
+                        </div>
+                        <small>Marca las que quieras o escribe una nueva. Máximo 10.</small>
+                    </fieldset>
                     <label>
                         Archivos
                         <input type="file" name="archivos" multiple accept=".jpg,.jpeg,.png,.webp,.pdf">
@@ -275,6 +292,7 @@
                     <button type="button" class="pestana" data-seccion="admin-categorias" role="tab" aria-selected="false">Categorías</button>
                     <button type="button" class="pestana" data-seccion="admin-tipos" role="tab" aria-selected="false">Tipos</button>
                     <button type="button" class="pestana" data-seccion="admin-equipos" role="tab" aria-selected="false">Equipos</button>
+                    <button type="button" class="pestana" data-seccion="admin-etiquetas" role="tab" aria-selected="false">Etiquetas</button>
                 </div>
 
                 <section id="admin-usuarios" class="seccion-admin">
@@ -303,7 +321,7 @@
                         </table>
                     </div>
                     <p id="sin-usuarios" class="nota" hidden>No hay usuarios en esta lista.</p>
-                    <p class="nota">Entrenador: publica y comenta. Administrador: además gestiona usuarios, categorías, tipos y equipos.</p>
+                    <p class="nota">Entrenador: publica y comenta. Administrador: además gestiona usuarios, categorías, tipos, equipos y etiquetas.</p>
                 </section>
 
                 <section id="admin-categorias" class="seccion-admin" hidden>
@@ -368,6 +386,17 @@
                         <select name="desde" id="copiar-desde" aria-label="Copiar desde la temporada" required></select>
                         <input type="text" name="hasta" maxlength="20" placeholder="2027-28" aria-label="A la temporada" required>
                         <button type="submit" class="principal">Copiar</button>
+                    </form>
+                </section>
+
+                <section id="admin-etiquetas" class="seccion-admin" hidden>
+                    <h3>Etiquetas</h3>
+                    <p class="nota">Las de la lista fija salen siempre para elegir al publicar. Las que crean los entrenadores se borran solas cuando ya no las tiene ninguna publicación; si quieres que se queden, márcalas como fijas. Al borrar una etiqueta, las publicaciones se quedan sin ella, pero no se borran.</p>
+                    <div id="lista-etiquetas"></div>
+                    <p id="sin-etiquetas" class="nota" hidden>Todavía no hay etiquetas.</p>
+                    <form id="form-etiqueta" class="fila-nueva" novalidate>
+                        <input type="text" name="nombre" maxlength="30" placeholder="Nueva etiqueta fija" aria-label="Nombre de la nueva etiqueta" required>
+                        <button type="submit" class="principal">Añadir</button>
                     </form>
                 </section>
             </div>

@@ -34,6 +34,7 @@ class MediaController extends Controller
             'type_id' => ['sometimes', 'integer'],
             'team_id' => ['sometimes', 'integer'],
             'temporada' => ['sometimes', 'string', 'max:20'],
+            'tag_id' => ['sometimes', 'integer'],
             'user_id' => ['sometimes', 'integer'],
             'q' => ['sometimes', 'string', 'max:100'],
         ]);

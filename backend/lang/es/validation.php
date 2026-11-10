@@ -93,6 +93,13 @@ return [
         'password' => [
             'different' => 'La contraseña nueva debe ser distinta de la actual.',
         ],
+        'etiquetas' => [
+            'max' => 'Una publicación puede tener como máximo :max etiquetas.',
+        ],
+        'etiquetas.*' => [
+            'max' => 'Cada etiqueta puede tener como máximo :max caracteres.',
+            'distinct' => 'Has puesto dos veces la misma etiqueta.',
+        ],
         'foto' => [
             'max' => 'La foto no puede ocupar más de 10 MB.',
             'mimes' => 'La foto debe ser JPG, PNG o WebP.',
@@ -109,6 +116,9 @@ return [
         'contenido' => 'el contenido',
         'desde' => 'la temporada de origen',
         'email' => 'el email',
+        'etiquetas' => 'las etiquetas',
+        'etiquetas.*' => 'la etiqueta',
+        'fija' => 'la lista fija',
         'foto' => 'la foto',
         'hasta' => 'la temporada nueva',
         'ids' => 'la lista',
@@ -120,6 +130,7 @@ return [
         'post_id' => 'la publicación',
         'q' => 'la búsqueda',
         'rol' => 'el rol',
+        'tag_id' => 'la etiqueta',
         'team_id' => 'el equipo',
         'temporada' => 'la temporada',
         'tipo' => 'el tipo de archivo',
