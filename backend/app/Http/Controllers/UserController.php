@@ -6,6 +6,7 @@ use App\Models\AuditLog;
 use App\Models\User;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 
 class UserController extends Controller
@@ -87,6 +88,32 @@ class UserController extends Controller
         return response()->json([
             'message' => 'Rol cambiado.',
             'user' => $user,
+        ]);
+    }
+
+    /**
+     * Pone una contraseña temporal a una cuenta, para quien ha olvidado la suya (el portal no envía correos).
+     * La contraseña se devuelve una sola vez para que el administrador se la pase a su dueño,
+     * y se cierran todas sus sesiones.
+     */
+    public function resetPassword(Request $request, User $user): JsonResponse
+    {
+        if ($user->is($request->user())) {
+            return response()->json([
+                'message' => 'Tu propia contraseña se cambia desde Mi perfil.',
+            ], 422);
+        }
+
+        $temporal = Str::password(12, symbols: false);
+
+        $user->forceFill(['password_hash' => $temporal])->save();
+        $user->tokens()->delete();
+
+        $this->audit($request, 'restablecer_contrasena', $user);
+
+        return response()->json([
+            'message' => 'Contraseña restablecida.',
+            'password' => $temporal,
         ]);
     }
 

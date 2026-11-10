@@ -70,6 +70,13 @@ async function descargarAdjunto(media) {
     return respuesta.blob();
 }
 
+// Copia pequeña de una imagen adjunta: para las tarjetas basta y pesa mucho menos que el original.
+async function descargarMiniatura(media) {
+    const respuesta = await peticion(`/media/${media.id}/thumbnail`);
+
+    return respuesta.blob();
+}
+
 // --- Fotos de perfil ---
 
 // Fotos ya descargadas, por id de usuario, para no pedir la misma foto una vez por publicación.
@@ -150,6 +157,12 @@ class ErrorApi extends Error {
     }
 }
 
+// Mensajes que Laravel da siempre en inglés, aunque esté configurado en español.
+const MENSAJES_EN_INGLES = {
+    'Unauthenticated.': 'Tu sesión ha caducado. Vuelve a entrar.',
+    'This action is unauthorized.': 'No tienes permiso para hacer esto.',
+};
+
 function mensajeDeError(estado, cuerpo) {
     if (estado === 429) {
         return 'Demasiados intentos. Espera un minuto y vuelve a probar.';
@@ -157,22 +170,29 @@ function mensajeDeError(estado, cuerpo) {
     if (cuerpo.errors) {
         return Object.values(cuerpo.errors).flat().join('\n');
     }
-    return cuerpo.message || `Error ${estado}`;
+    if (estado === 404) {
+        return 'No se ha encontrado. Puede que se haya borrado.';
+    }
+    if (estado >= 500) {
+        return 'Error en el servidor. Vuelve a probar en un rato.';
+    }
+    return MENSAJES_EN_INGLES[cuerpo.message] ?? (cuerpo.message || `Error ${estado}`);
 }
 
 // --- Avisos ---
 
-// Con la ventana de publicación abierta, el aviso sale dentro de ella; si no, quedaría tapado.
+// Con una ventana abierta, el aviso sale dentro de ella; si no, quedaría tapado.
 function avisar(texto, tipo = 'ok') {
-    const aviso = $('dialogo-post').open ? $('aviso-post') : $('aviso');
+    const aviso = document.querySelector('.dialogo[open] .aviso') ?? $('aviso');
     aviso.textContent = texto;
     aviso.className = `aviso ${tipo}`;
     aviso.hidden = false;
 }
 
 function limpiarAviso() {
-    $('aviso').hidden = true;
-    $('aviso-post').hidden = true;
+    for (const aviso of document.querySelectorAll('.aviso')) {
+        aviso.hidden = true;
+    }
 }
 
 // --- Vistas ---
@@ -180,9 +200,12 @@ function limpiarAviso() {
 function mostrarAcceso() {
     usuario = null;
     liberarAdjuntos();
+    liberarRecursos();
     olvidarFotos();
     cerrarFormPost();
+    cerrarPublicacion();
     $('lista-posts').replaceChildren();
+    $('lista-recursos').replaceChildren();
     document.body.classList.remove('con-sesion');
     abrirMenu(false);
     $('vista-sesion').hidden = true;
@@ -213,6 +236,7 @@ function mostrarSesion() {
 // Así, al recargar se sigue en la misma sección y el botón "atrás" del navegador funciona.
 const VISTAS = {
     publicaciones: 'vista-publicaciones',
+    recursos: 'vista-recursos',
     administracion: 'panel-admin',
     perfil: 'vista-perfil',
 };
@@ -237,6 +261,11 @@ function mostrarVista() {
         } else {
             enlace.removeAttribute('aria-current');
         }
+    }
+
+    // Los recursos se piden cada vez que se entra, para ver también lo que han subido los demás.
+    if (vista === 'recursos') {
+        recargarRecursos();
     }
 }
 
@@ -344,6 +373,13 @@ async function registrar(datos) {
     avisar(respuesta.message);
 }
 
+async function cambiarContrasena(datos) {
+    const respuesta = await api('/user/password', { metodo: 'PUT', datos });
+
+    $('form-contrasena').reset();
+    avisar(respuesta.message);
+}
+
 async function salir() {
     try {
         await api('/logout', { metodo: 'POST' });
@@ -383,6 +419,15 @@ function filaDeUsuario(u) {
     boton.textContent = u.activo ? 'Desactivar' : 'Aprobar';
     boton.addEventListener('click', () => cambiarEstado(u, boton));
 
+    const restablecer = document.createElement('button');
+    restablecer.type = 'button';
+    restablecer.textContent = 'Restablecer contraseña';
+    restablecer.addEventListener('click', () => restablecerContrasena(u, restablecer));
+
+    const acciones = document.createElement('div');
+    acciones.className = 'acciones-usuario';
+    acciones.append(boton, restablecer);
+
     // Tu propio rol no se puede cambiar: se muestra como texto.
     const esYo = u.id === usuario.id;
     const rol = esYo ? (NOMBRES_ROL[u.rol] ?? u.rol) : selectorDeRol(u);
@@ -393,7 +438,7 @@ function filaDeUsuario(u) {
     email.textContent = u.email;
     persona.append(u.nombre, email);
 
-    for (const contenido of [persona, rol, etiqueta, esYo ? '' : boton]) {
+    for (const contenido of [persona, rol, etiqueta, esYo ? '' : acciones]) {
         const celda = document.createElement('td');
         celda.append(contenido);
         fila.append(celda);
@@ -439,6 +484,23 @@ async function cambiarRol(u, selector) {
         selector.value = u.rol;
         selector.disabled = false;
     }
+}
+
+// El portal no envía correos: el administrador recibe una contraseña temporal y se la pasa a la persona.
+async function restablecerContrasena(u, boton) {
+    if (!confirm(`¿Poner una contraseña temporal a ${u.nombre}? Su contraseña actual dejará de funcionar.`)) {
+        return;
+    }
+
+    await conBoton(boton, async () => {
+        const respuesta = await api(`/users/${u.id}/password`, { metodo: 'PUT' });
+
+        avisar(
+            `Contraseña temporal de ${u.nombre} (${u.email}): ${respuesta.password}\n`
+            + 'Pásasela y dile que la cambie en «Mi perfil». No se volverá a mostrar.',
+        );
+        $('aviso').scrollIntoView({ block: 'center' });
+    });
 }
 
 async function cambiarEstado(u, boton) {
@@ -889,14 +951,20 @@ async function cargarCategorias() {
         const tipos = () => catalogo.tipos.map((t) => opcion(t.id, t.nombre));
 
         rellenarDesplegable($('post-tipo'), tipos());
-        rellenarDesplegable($('filtro-tipo'), [opcion('', 'Todos los tipos'), ...tipos()]);
         rellenarDesplegable($('post-equipo'), [opcion('', 'Sin equipo'), ...opcionesDeEquipos(catalogo.equipos)]);
-        rellenarDesplegable($('filtro-equipo'), [opcion('', 'Todos los equipos'), ...opcionesDeEquipos(catalogo.equipos)]);
 
-        rellenarDesplegable(
-            $('filtro-temporada'),
-            [opcion('', 'Todas las temporadas'), ...catalogo.temporadas.map((t) => opcion(t, t))],
-        );
+        // Los filtros de Publicaciones y los de Recursos tienen las mismas opciones.
+        for (const [tipo, equipo, temporada] of [
+            ['filtro-tipo', 'filtro-equipo', 'filtro-temporada'],
+            ['recursos-tipo', 'recursos-equipo', 'recursos-temporada'],
+        ]) {
+            rellenarDesplegable($(tipo), [opcion('', 'Todos los tipos'), ...tipos()]);
+            rellenarDesplegable($(equipo), [opcion('', 'Todos los equipos'), ...opcionesDeEquipos(catalogo.equipos)]);
+            rellenarDesplegable(
+                $(temporada),
+                [opcion('', 'Todas las temporadas'), ...catalogo.temporadas.map((t) => opcion(t, t))],
+            );
+        }
 
         if (usuario?.rol === 'admin') {
             pintarAdministracion();
@@ -906,13 +974,20 @@ async function cargarCategorias() {
     }
 }
 
-async function cargarPosts() {
+let paginaPosts = 1;
+// Si se cambian los filtros rápido, solo se pinta la respuesta de la última petición.
+let peticionPosts = 0;
+
+// Sin "siguiente", carga la primera página; con él, añade la siguiente debajo ("Cargar más").
+async function cargarPosts(siguiente = false) {
     const parametros = new URLSearchParams();
     const filtros = {
         type_id: $('filtro-tipo').value,
         team_id: $('filtro-equipo').value,
         temporada: $('filtro-temporada').value,
+        user_id: $('filtro-mias').checked ? usuario.id : '',
         q: $('filtro-q').value.trim(),
+        page: siguiente ? paginaPosts + 1 : 1,
     };
 
     for (const [nombre, valor] of Object.entries(filtros)) {
@@ -922,20 +997,30 @@ async function cargarPosts() {
     }
 
     try {
-        const consulta = parametros.toString();
-        const respuesta = await api('/posts' + (consulta ? `?${consulta}` : ''));
+        const esta = ++peticionPosts;
+        const respuesta = await api(`/posts?${parametros}`);
 
-        liberarAdjuntos();
-        $('lista-posts').replaceChildren(...respuesta.data.map(tarjetaDePost));
-        $('sin-posts').hidden = respuesta.data.length > 0;
-        $('mas-posts').hidden = respuesta.total <= respuesta.data.length;
-        $('mas-posts').textContent = `Se muestran las ${respuesta.data.length} más recientes de ${respuesta.total}.`;
+        if (esta !== peticionPosts) {
+            return;
+        }
+
+        if (!siguiente) {
+            liberarAdjuntos();
+            $('lista-posts').replaceChildren();
+        }
+
+        $('lista-posts').append(...respuesta.data.map((post) => tarjetaDePost(post)));
+        paginaPosts = respuesta.current_page;
+        $('sin-posts').hidden = respuesta.total > 0;
+        $('boton-mas-posts').hidden = respuesta.current_page >= respuesta.last_page;
     } catch (error) {
         avisar(error.message, 'error');
     }
 }
 
-function tarjetaDePost(post) {
+// En la ventana que se abre desde Recursos ("enVentana") no salen los botones de editar, eliminar ni quitar adjuntos.
+function tarjetaDePost(post, enVentana = false) {
+    const gestionable = !enVentana && puedeGestionar(post);
     const tarjeta = document.createElement('article');
     tarjeta.className = 'post';
 
@@ -986,7 +1071,7 @@ function tarjetaDePost(post) {
     if (post.media?.length) {
         const adjuntos = document.createElement('div');
         adjuntos.className = 'adjuntos';
-        adjuntos.append(...post.media.map((media) => elementoDeAdjunto(media, puedeGestionar(post))));
+        adjuntos.append(...post.media.map((media) => elementoDeAdjunto(media, gestionable)));
         tarjeta.append(adjuntos);
     }
 
@@ -1002,7 +1087,7 @@ function tarjetaDePost(post) {
     botones.className = 'botones';
     botones.append(verComentarios);
 
-    if (puedeGestionar(post)) {
+    if (gestionable) {
         const editar = document.createElement('button');
         editar.type = 'button';
         editar.textContent = 'Editar';
@@ -1223,22 +1308,23 @@ function elementoDeAdjunto(media, gestionable) {
 
         caja.append(video, enlace);
     } else if (media.tipo === 'imagen') {
-        // Un <img> normal no envía el token, así que la imagen se descarga con él
-        // y se muestra desde una URL local del navegador.
-        const enlace = document.createElement('a');
-        enlace.target = '_blank';
-        enlace.rel = 'noopener';
+        // Un <img> normal no envía el token, así que la miniatura se descarga con él
+        // y se muestra desde una URL local del navegador. Al pulsarla se amplía.
+        const ampliar = document.createElement('button');
+        ampliar.type = 'button';
+        ampliar.className = 'ampliar';
+        ampliar.setAttribute('aria-label', `Ampliar ${media.nombre_original ?? 'la imagen'}`);
         const imagen = document.createElement('img');
         imagen.alt = media.nombre_original ?? 'Imagen adjunta';
-        enlace.append(imagen);
-        caja.append(enlace);
+        ampliar.append(imagen);
+        ampliar.addEventListener('click', () => ampliarImagen(imagen, media));
+        caja.append(ampliar);
 
-        descargarAdjunto(media)
+        descargarMiniatura(media)
             .then((blob) => {
                 const url = URL.createObjectURL(blob);
                 urlsDeAdjuntos.push(url);
                 imagen.src = url;
-                enlace.href = url;
             })
             .catch(() => {
                 imagen.alt = 'No se pudo cargar la imagen';
@@ -1262,6 +1348,46 @@ function elementoDeAdjunto(media, gestionable) {
     }
 
     return caja;
+}
+
+// URL de la foto original que se ve en el visor; se libera al cerrarlo.
+let urlDelVisor = null;
+
+// Muestra en grande una imagen adjunta: primero su miniatura, ya cargada,
+// y en cuanto se descarga, la foto original con toda su resolución.
+async function ampliarImagen(imagen, media) {
+    if (!imagen.src) {
+        return;
+    }
+
+    const foto = $('visor-imagen-foto');
+    foto.src = imagen.src;
+    foto.alt = imagen.alt;
+    foto.dataset.media = media.id;
+    $('visor-imagen').showModal();
+
+    try {
+        const url = URL.createObjectURL(await descargarAdjunto(media));
+
+        // Si mientras tanto se ha cerrado el visor o se ha abierto otra foto, esta ya no hace falta.
+        if (!$('visor-imagen').open || foto.dataset.media !== String(media.id)) {
+            URL.revokeObjectURL(url);
+            return;
+        }
+
+        liberarVisor();
+        urlDelVisor = url;
+        foto.src = url;
+    } catch {
+        // Se queda la miniatura.
+    }
+}
+
+function liberarVisor() {
+    if (urlDelVisor) {
+        URL.revokeObjectURL(urlDelVisor);
+        urlDelVisor = null;
+    }
 }
 
 function tamanoLegible(bytes) {
@@ -1441,6 +1567,193 @@ async function eliminarPost(post, boton) {
     }
 }
 
+// --- Recursos ---
+
+const NOMBRES_CLASE = {
+    imagen: 'Imagen',
+    pdf: 'PDF',
+    youtube: 'Vídeo',
+};
+
+// Miniaturas de Recursos descargadas con el token; se liberan al volver a cargar la lista.
+let urlsDeRecursos = [];
+let paginaRecursos = 1;
+// Si se cambian los filtros rápido, solo se pinta la respuesta de la última petición.
+let peticionRecursos = 0;
+
+// Sin "siguiente", carga la primera página; con él, añade la siguiente debajo ("Cargar más").
+async function cargarRecursos(siguiente = false) {
+    const parametros = new URLSearchParams();
+    const filtros = {
+        tipo: $('recursos-clase').value,
+        type_id: $('recursos-tipo').value,
+        team_id: $('recursos-equipo').value,
+        temporada: $('recursos-temporada').value,
+        user_id: $('recursos-mias').checked ? usuario.id : '',
+        q: $('recursos-q').value.trim(),
+        page: siguiente ? paginaRecursos + 1 : 1,
+    };
+
+    for (const [nombre, valor] of Object.entries(filtros)) {
+        if (valor) {
+            parametros.set(nombre, valor);
+        }
+    }
+
+    const esta = ++peticionRecursos;
+    const respuesta = await api(`/media?${parametros}`);
+
+    if (esta !== peticionRecursos) {
+        return;
+    }
+
+    if (!siguiente) {
+        liberarRecursos();
+        $('lista-recursos').replaceChildren();
+    }
+
+    $('lista-recursos').append(...respuesta.data.map(tarjetaDeRecurso));
+    paginaRecursos = respuesta.current_page;
+    $('sin-recursos').hidden = respuesta.total > 0;
+    $('boton-mas-recursos').hidden = respuesta.current_page >= respuesta.last_page;
+}
+
+function recargarRecursos() {
+    cargarRecursos().catch((error) => avisar(error.message, 'error'));
+}
+
+function tarjetaDeRecurso(media) {
+    const post = media.post;
+    const tarjeta = document.createElement('article');
+    tarjeta.className = 'recurso';
+
+    // Arriba, la vista previa: la imagen, la miniatura del vídeo o un recuadro para el PDF.
+    const vista = document.createElement('div');
+    vista.className = `recurso-vista ${media.tipo}`;
+    // Solo es decoración: el nombre del archivo ya dice qué es.
+    vista.setAttribute('aria-hidden', 'true');
+
+    if (media.tipo === 'imagen') {
+        const imagen = document.createElement('img');
+        imagen.alt = media.nombre_original ?? '';
+        imagen.addEventListener('click', () => ampliarImagen(imagen, media));
+        vista.append(imagen);
+
+        descargarMiniatura(media)
+            .then((blob) => {
+                const url = URL.createObjectURL(blob);
+                urlsDeRecursos.push(url);
+                imagen.src = url;
+            })
+            .catch(() => imagen.remove());
+    } else if (media.tipo === 'youtube') {
+        const imagen = document.createElement('img');
+        imagen.alt = '';
+        imagen.loading = 'lazy';
+        imagen.referrerPolicy = 'no-referrer';
+        imagen.src = `https://i.ytimg.com/vi/${encodeURIComponent(media.youtube_id)}/mqdefault.jpg`;
+        vista.append(imagen);
+    }
+
+    const clase = document.createElement('span');
+    clase.className = 'recurso-clase';
+    clase.textContent = NOMBRES_CLASE[media.tipo] ?? media.tipo;
+    vista.append(clase);
+
+    const nombre = document.createElement('h3');
+    nombre.textContent = media.nombre_original ?? 'Vídeo de YouTube';
+
+    const publicacion = document.createElement('p');
+    publicacion.className = 'recurso-publicacion';
+    publicacion.textContent = post.titulo;
+
+    const tipo = document.createElement('span');
+    tipo.className = 'etiqueta tipo';
+    tipo.textContent = post.type?.nombre ?? 'Sin tipo';
+
+    const detalles = [
+        post.team && `${post.team.nombre} (${post.team.category?.nombre ?? 'sin categoría'})`,
+        post.temporada ?? post.team?.temporada,
+        media.tipo !== 'youtube' && tamanoLegible(media.tamano),
+    ].filter(Boolean);
+
+    const meta = document.createElement('div');
+    meta.className = 'post-meta';
+    meta.append(tipo, ...detalles.map((texto) => {
+        const dato = document.createElement('span');
+        dato.textContent = texto;
+        return dato;
+    }));
+
+    const nombreAutor = document.createElement('strong');
+    nombreAutor.textContent = post.user?.nombre ?? 'Usuario';
+
+    const fecha = document.createElement('span');
+    fecha.className = 'fecha';
+    fecha.textContent = new Date(media.created_at).toLocaleDateString('es-ES', { dateStyle: 'long' });
+
+    const textoAutor = document.createElement('div');
+    textoAutor.append(nombreAutor, fecha);
+
+    const autor = document.createElement('div');
+    autor.className = 'autor';
+    autor.append(avatar(post.user, 28), textoAutor);
+
+    const botones = document.createElement('div');
+    botones.className = 'botones';
+
+    if (media.tipo === 'youtube') {
+        const enlace = document.createElement('a');
+        enlace.className = 'boton';
+        enlace.href = `https://www.youtube.com/watch?v=${encodeURIComponent(media.youtube_id)}`;
+        enlace.target = '_blank';
+        enlace.rel = 'noopener noreferrer';
+        enlace.textContent = 'Ver en YouTube';
+        botones.append(enlace);
+    } else {
+        const descargar = document.createElement('button');
+        descargar.type = 'button';
+        descargar.textContent = 'Descargar';
+        descargar.addEventListener('click', () => guardarAdjunto(media, descargar));
+        botones.append(descargar);
+    }
+
+    const verPublicacion = document.createElement('button');
+    verPublicacion.type = 'button';
+    verPublicacion.textContent = 'Ver publicación';
+    verPublicacion.addEventListener('click', () => conBoton(verPublicacion, () => abrirPublicacion(post.id)));
+    botones.append(verPublicacion);
+
+    const cuerpo = document.createElement('div');
+    cuerpo.className = 'recurso-cuerpo';
+    cuerpo.append(nombre, publicacion, meta, autor, botones);
+
+    tarjeta.append(vista, cuerpo);
+
+    return tarjeta;
+}
+
+function liberarRecursos() {
+    urlsDeRecursos.forEach((url) => URL.revokeObjectURL(url));
+    urlsDeRecursos = [];
+}
+
+// Abre la publicación completa en una ventana, con los comentarios ya desplegados.
+async function abrirPublicacion(postId) {
+    const post = await api(`/posts/${postId}`);
+    const tarjeta = tarjetaDePost(post, true);
+
+    $('contenido-ver-post').replaceChildren(tarjeta);
+    $('dialogo-ver-post').showModal();
+    tarjeta.querySelector('.botones button').click();
+}
+
+function cerrarPublicacion() {
+    if ($('dialogo-ver-post').open) {
+        $('dialogo-ver-post').close();
+    }
+}
+
 // --- Arranque ---
 
 async function comprobarApi() {
@@ -1533,25 +1846,65 @@ $('form-registro').addEventListener('submit', (evento) => {
     enviar(evento.target, registrar);
 });
 
+$('form-contrasena').addEventListener('submit', (evento) => {
+    evento.preventDefault();
+    enviar(evento.target, cambiarContrasena);
+});
+
 $('boton-nueva').addEventListener('click', () => abrirFormPost());
 $('boton-cancelar-post').addEventListener('click', cerrarFormPost);
 $('boton-cerrar-post').addEventListener('click', cerrarFormPost);
 $('dialogo-post').addEventListener('close', alCerrarFormPost);
 $('post-equipo').addEventListener('change', alElegirEquipo);
 
-for (const filtro of ['filtro-tipo', 'filtro-equipo', 'filtro-temporada']) {
-    $(filtro).addEventListener('change', cargarPosts);
+for (const filtro of ['filtro-tipo', 'filtro-equipo', 'filtro-temporada', 'filtro-mias']) {
+    $(filtro).addEventListener('change', () => cargarPosts());
 }
 
 let esperaBusqueda;
 $('filtro-q').addEventListener('input', () => {
     clearTimeout(esperaBusqueda);
-    esperaBusqueda = setTimeout(cargarPosts, 300);
+    esperaBusqueda = setTimeout(() => cargarPosts(), 300);
+});
+
+$('boton-mas-posts').addEventListener('click', (evento) => {
+    const boton = evento.currentTarget;
+    boton.disabled = true;
+    cargarPosts(true).finally(() => {
+        boton.disabled = false;
+    });
 });
 
 $('form-post').addEventListener('submit', (evento) => {
     evento.preventDefault();
     enviar(evento.target, guardarPost);
+});
+
+for (const filtro of ['recursos-clase', 'recursos-tipo', 'recursos-equipo', 'recursos-temporada', 'recursos-mias']) {
+    $(filtro).addEventListener('change', recargarRecursos);
+}
+
+let esperaBusquedaRecursos;
+$('recursos-q').addEventListener('input', () => {
+    clearTimeout(esperaBusquedaRecursos);
+    esperaBusquedaRecursos = setTimeout(recargarRecursos, 300);
+});
+
+$('boton-mas-recursos').addEventListener('click', (evento) => {
+    conBoton(evento.currentTarget, () => cargarRecursos(true));
+});
+
+$('boton-cerrar-ver-post').addEventListener('click', cerrarPublicacion);
+
+// El visor se cierra pulsando en cualquier sitio: la foto, el fondo o la ✕.
+$('visor-imagen').addEventListener('click', () => $('visor-imagen').close());
+$('visor-imagen').addEventListener('close', () => {
+    delete $('visor-imagen-foto').dataset.media;
+    liberarVisor();
+});
+$('dialogo-ver-post').addEventListener('close', () => {
+    $('contenido-ver-post').replaceChildren();
+    $('aviso-ver-post').hidden = true;
 });
 
 comprobarApi();

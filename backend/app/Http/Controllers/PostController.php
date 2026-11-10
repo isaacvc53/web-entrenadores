@@ -37,15 +37,7 @@ class PostController extends Controller
         $posts = Post::query()
             ->with(self::RELACIONES)
             ->withCount($this->contadorDeComentarios())
-            ->when($filtros['type_id'] ?? null, fn ($query, $typeId) => $query->where('type_id', $typeId))
-            ->when($filtros['team_id'] ?? null, fn ($query, $teamId) => $query->where('team_id', $teamId))
-            // La temporada puede estar escrita en la publicación o venir de su equipo.
-            ->when($filtros['temporada'] ?? null, fn ($query, $temporada) => $query->where(
-                fn ($query) => $query->where('temporada', $temporada)
-                    ->orWhereHas('team', fn ($query) => $query->where('temporada', $temporada))
-            ))
-            ->when($filtros['user_id'] ?? null, fn ($query, $userId) => $query->where('user_id', $userId))
-            ->when($filtros['q'] ?? null, fn ($query, $q) => $query->whereLike('titulo', '%'.$q.'%'))
+            ->filtrar($filtros)
             ->latest()
             ->latest('id')
             ->paginate(20);

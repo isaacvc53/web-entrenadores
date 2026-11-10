@@ -25,6 +25,7 @@
             </button>
             <nav id="menu" class="menu" aria-label="Secciones">
                 <a href="#publicaciones">Publicaciones</a>
+                <a href="#recursos">Recursos</a>
                 <a href="#administracion" id="enlace-admin">Administración</a>
                 <a href="#perfil" class="enlace-perfil"><span id="avatar-menu"></span>Mi perfil</a>
                 <button type="button" id="boton-salir">Cerrar sesión</button>
@@ -101,6 +102,24 @@
                     <dt>Rol</dt>
                     <dd id="dato-rol"></dd>
                 </dl>
+
+                <h3>Cambiar contraseña</h3>
+                <form id="form-contrasena" class="form-contrasena" novalidate>
+                    <label>
+                        Contraseña actual
+                        <input type="password" name="password_actual" autocomplete="current-password" required>
+                    </label>
+                    <label>
+                        Contraseña nueva
+                        <input type="password" name="password" autocomplete="new-password" minlength="8" required>
+                        <small>Mínimo 8 caracteres. Al cambiarla se cierra la sesión en tus otros dispositivos.</small>
+                    </label>
+                    <label>
+                        Repite la contraseña nueva
+                        <input type="password" name="password_confirmation" autocomplete="new-password" minlength="8" required>
+                    </label>
+                    <button type="submit" class="principal">Cambiar contraseña</button>
+                </form>
             </div>
 
             <!-- Publicaciones: a la izquierda el botón de publicar y los filtros; a la derecha, la lista. -->
@@ -126,6 +145,10 @@
                             Temporada
                             <select id="filtro-temporada"></select>
                         </label>
+                        <label class="casilla">
+                            <input type="checkbox" id="filtro-mias">
+                            Solo mis publicaciones
+                        </label>
                     </div>
                 </aside>
 
@@ -133,9 +156,70 @@
                     <h2 id="titulo-publicaciones" class="titulo-seccion">Publicaciones</h2>
                     <div id="lista-posts" class="rejilla-posts"></div>
                     <p id="sin-posts" class="nota" hidden>No hay publicaciones.</p>
-                    <p id="mas-posts" class="nota" hidden></p>
+                    <button type="button" id="boton-mas-posts" class="cargar-mas" hidden>Cargar más</button>
                 </section>
             </div>
+
+            <!-- Recursos: los archivos y vídeos de todas las publicaciones, juntos y con filtros. -->
+            <div id="vista-recursos" class="con-lateral" hidden>
+                <aside class="lateral tarjeta">
+                    <h2>Filtrar</h2>
+                    <div class="filtros">
+                        <label>
+                            Buscar
+                            <input type="search" id="recursos-q" placeholder="Archivo o publicación">
+                        </label>
+                        <label>
+                            Archivo
+                            <select id="recursos-clase">
+                                <option value="">Todos los archivos</option>
+                                <option value="imagen">Imágenes</option>
+                                <option value="pdf">PDF</option>
+                                <option value="youtube">Vídeos de YouTube</option>
+                            </select>
+                        </label>
+                        <label>
+                            Tipo de publicación
+                            <select id="recursos-tipo"></select>
+                        </label>
+                        <label>
+                            Equipo
+                            <select id="recursos-equipo"></select>
+                        </label>
+                        <label>
+                            Temporada
+                            <select id="recursos-temporada"></select>
+                        </label>
+                        <label class="casilla">
+                            <input type="checkbox" id="recursos-mias">
+                            Solo mis archivos
+                        </label>
+                    </div>
+                </aside>
+
+                <section aria-labelledby="titulo-recursos">
+                    <h2 id="titulo-recursos" class="titulo-seccion">Recursos</h2>
+                    <div id="lista-recursos" class="rejilla-recursos"></div>
+                    <p id="sin-recursos" class="nota" hidden>No hay archivos con estos filtros.</p>
+                    <button type="button" id="boton-mas-recursos" class="cargar-mas" hidden>Cargar más</button>
+                </section>
+            </div>
+
+            <!-- Ventana para ver desde Recursos la publicación de un archivo, con sus comentarios. -->
+            <dialog id="dialogo-ver-post" class="dialogo" aria-labelledby="titulo-ver-post">
+                <div class="fila-titulo">
+                    <h2 id="titulo-ver-post">Publicación</h2>
+                    <button type="button" class="cerrar" id="boton-cerrar-ver-post" aria-label="Cerrar">✕</button>
+                </div>
+                <p id="aviso-ver-post" class="aviso" role="status" hidden></p>
+                <div id="contenido-ver-post"></div>
+            </dialog>
+
+            <!-- Visor para ver una foto en grande. Se cierra pulsando en cualquier sitio o con Escape. -->
+            <dialog id="visor-imagen" class="visor" aria-label="Foto ampliada">
+                <button type="button" class="cerrar" aria-label="Cerrar">✕</button>
+                <img id="visor-imagen-foto" alt="">
+            </dialog>
 
             <!-- Ventana por encima de la página para crear o editar una publicación. -->
             <dialog id="dialogo-post" class="dialogo" aria-labelledby="titulo-form-post">

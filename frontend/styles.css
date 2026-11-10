@@ -468,6 +468,13 @@ td:last-child {
     letter-spacing: 0.05em;
 }
 
+/* En Recursos no hay botón encima del título. */
+.lateral h2:first-child {
+    margin-top: 0;
+    padding-top: 0;
+    border-top: 0;
+}
+
 .filtros label {
     margin-bottom: 12px;
 }
@@ -476,12 +483,31 @@ td:last-child {
     margin-bottom: 0;
 }
 
-/* Las publicaciones, en tantas columnas como quepan (dos en una pantalla de ordenador). */
+/* Casilla con su texto al lado, en vez de debajo como los demás campos. */
+label.casilla {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    cursor: pointer;
+}
+
+label.casilla input {
+    width: auto;
+    margin: 0;
+    accent-color: var(--primario);
+}
+
+/* Las publicaciones, una debajo de otra y centradas en el espacio que dejan los filtros. */
+.principal-publicaciones {
+    justify-self: center;
+    width: 100%;
+    max-width: 760px;
+}
+
 .rejilla-posts {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(380px, 1fr));
+    grid-template-columns: minmax(0, 1fr);
     gap: 16px;
-    align-items: start;
 }
 
 .post {
@@ -491,6 +517,121 @@ td:last-child {
     border-top: 3px solid var(--primario);
     background: var(--tarjeta);
     box-shadow: var(--sombra);
+}
+
+/* Recursos: tarjetas más estrechas que las publicaciones, con la vista previa arriba. */
+
+.rejilla-recursos {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+    gap: 16px;
+}
+
+.recurso {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+    border: 1px solid var(--borde);
+    border-top: 3px solid var(--primario);
+    background: var(--tarjeta);
+    box-shadow: var(--sombra);
+}
+
+.recurso-vista {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    aspect-ratio: 16 / 9;
+    overflow: hidden;
+    background: var(--fondo);
+}
+
+.recurso-vista img {
+    display: block;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+/* Los PDF no tienen miniatura: un recuadro con las letras en el rojo del club. */
+.recurso-vista.pdf::before {
+    content: 'PDF';
+    padding: 8px 14px;
+    border: 3px solid var(--primario);
+    color: var(--primario);
+    font-size: 1.8rem;
+    font-weight: 800;
+    letter-spacing: 0.08em;
+}
+
+.recurso-clase {
+    position: absolute;
+    top: 0;
+    left: 0;
+    padding: 3px 8px;
+    background: var(--primario);
+    color: #fff;
+    font-size: 0.75rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+.recurso-cuerpo {
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    padding: 12px 14px 14px;
+}
+
+.recurso h3 {
+    margin: 0;
+    font-size: 1rem;
+    overflow-wrap: anywhere;
+}
+
+.recurso-publicacion {
+    margin: 2px 0 8px;
+    font-size: 0.9rem;
+    color: var(--texto-suave);
+    overflow-wrap: anywhere;
+}
+
+.recurso .autor {
+    margin: 10px 0 0;
+}
+
+/* Los botones, siempre abajo del todo, aunque la tarjeta de al lado sea más alta. */
+.recurso .botones {
+    flex-wrap: wrap;
+    margin-top: auto;
+    padding-top: 12px;
+}
+
+.recurso .botones button,
+.recurso .botones .boton {
+    padding: 5px 10px;
+    font-size: 0.85rem;
+}
+
+/* Enlace con aspecto de botón. */
+a.boton {
+    display: inline-block;
+    padding: 9px 14px;
+    border: 1px solid var(--borde);
+    background: #fff;
+    color: var(--texto);
+    text-decoration: none;
+}
+
+a.boton:hover {
+    border-color: var(--texto-suave);
+}
+
+.cargar-mas {
+    display: block;
+    margin: 16px auto 0;
 }
 
 /* Ventana emergente de nueva publicación / editar. */
@@ -511,12 +652,60 @@ td:last-child {
 }
 
 /* Con la ventana abierta, la página de detrás no se mueve. */
-body:has(.dialogo[open]) {
+body:has(.dialogo[open]),
+body:has(.visor[open]) {
     overflow: hidden;
+}
+
+/* Visor de fotos: la imagen entera, lo más grande que quepa, sobre fondo oscuro. */
+.visor {
+    max-width: none;
+    max-height: none;
+    padding: 0;
+    border: 0;
+    background: transparent;
+    overflow: visible;
+}
+
+.visor::backdrop {
+    background: rgb(0 0 0 / 85%);
+}
+
+.visor img {
+    display: block;
+    max-width: calc(100vw - 32px);
+    max-height: calc(100vh - 96px);
+    object-fit: contain;
+    cursor: zoom-out;
+}
+
+.visor .cerrar {
+    position: fixed;
+    top: 12px;
+    right: 12px;
+    background: transparent;
+    color: #fff;
+    font-size: 1.6rem;
+}
+
+.visor .cerrar:hover {
+    background: rgb(255 255 255 / 15%);
+    color: #fff;
+}
+
+.recurso-vista.imagen img {
+    cursor: zoom-in;
 }
 
 .form-post h2 {
     margin: 0;
+}
+
+/* Dentro de la ventana, la publicación va sin su recuadro de tarjeta. */
+.dialogo .post {
+    padding: 0;
+    border: 0;
+    box-shadow: none;
 }
 
 button.cerrar {
@@ -611,6 +800,28 @@ button.cerrar:hover {
     max-width: 720px;
 }
 
+#vista-perfil h3 {
+    margin: 24px 0 12px;
+    padding-top: 20px;
+    border-top: 1px solid var(--borde);
+}
+
+.form-contrasena {
+    max-width: 420px;
+}
+
+.acciones-usuario {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    gap: 6px;
+}
+
+.acciones-usuario button {
+    padding: 5px 10px;
+    font-size: 0.85rem;
+}
+
 .post h3 {
     margin: 0 0 6px;
     font-size: 1.05rem;
@@ -642,10 +853,12 @@ button.cerrar:hover {
     font-size: 0.85rem;
 }
 
+/* Las imágenes, en tantas columnas como quepan (tres en el ordenador, una en el móvil);
+   los vídeos y los PDF ocupan una fila entera. */
 .adjuntos {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: flex-start;
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    align-items: start;
     gap: 10px;
     margin-top: 12px;
 }
@@ -655,11 +868,22 @@ button.cerrar:hover {
     flex-direction: column;
     align-items: flex-start;
     gap: 4px;
-    max-width: 100%;
+    min-width: 0;
 }
 
-.adjunto.youtube {
-    flex-basis: 100%;
+.adjunto.youtube,
+.adjunto.pdf {
+    grid-column: 1 / -1;
+}
+
+/* La miniatura es un botón que la amplía, sin aspecto de botón. */
+button.ampliar {
+    display: block;
+    width: 100%;
+    padding: 0;
+    border: 0;
+    background: none;
+    cursor: zoom-in;
 }
 
 .adjunto iframe {
@@ -672,8 +896,8 @@ button.cerrar:hover {
 
 .adjunto img {
     display: block;
-    width: 120px;
-    height: 90px;
+    width: 100%;
+    aspect-ratio: 4 / 3;
     object-fit: cover;
     border: 1px solid var(--borde);
     background: var(--fondo);
@@ -954,10 +1178,6 @@ button.cerrar:hover {
 
     .marca-titulo {
         font-size: 0.95rem;
-    }
-
-    .rejilla-posts {
-        grid-template-columns: minmax(0, 1fr);
     }
 
     .form-comentario {

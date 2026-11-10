@@ -7,6 +7,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\Rules\Password;
+use Illuminate\Validation\ValidationException;
 
 class AuthController extends Controller
 {
@@ -60,6 +61,33 @@ class AuthController extends Controller
         return response()->json([
             'token' => $user->createToken('api')->plainTextToken,
             'user' => $user,
+        ]);
+    }
+
+    /**
+     * Cambia la contraseña del usuario conectado, comprobando antes la actual.
+     * Se cierran sus otras sesiones abiertas, pero no la de esta petición.
+     */
+    public function changePassword(Request $request): JsonResponse
+    {
+        $data = $request->validate([
+            'password_actual' => ['required', 'string'],
+            'password' => ['required', 'confirmed', 'different:password_actual', Password::min(8)],
+        ]);
+
+        $user = $request->user();
+
+        if (! Hash::check($data['password_actual'], $user->password_hash)) {
+            throw ValidationException::withMessages([
+                'password_actual' => 'La contraseña actual no es correcta.',
+            ]);
+        }
+
+        $user->forceFill(['password_hash' => $data['password']])->save();
+        $user->tokens()->whereKeyNot($user->currentAccessToken()->getKey())->delete();
+
+        return response()->json([
+            'message' => 'Contraseña cambiada.',
         ]);
     }
 

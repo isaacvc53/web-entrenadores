@@ -43,6 +43,9 @@ Route::middleware(['auth:sanctum', 'activo'])->group(function () {
         return $request->user();
     });
 
+    // Con límite de intentos, para que nadie pueda ir probando la contraseña actual.
+    Route::put('/user/password', [AuthController::class, 'changePassword'])->middleware('throttle:5,1');
+
     Route::post('/user/photo', [ProfilePhotoController::class, 'store'])->middleware('throttle:10,1');
     Route::delete('/user/photo', [ProfilePhotoController::class, 'destroy']);
     Route::get('/users/{user}/photo', [ProfilePhotoController::class, 'show']);
@@ -69,8 +72,10 @@ Route::middleware(['auth:sanctum', 'activo'])->group(function () {
 
     Route::apiResource('posts', PostController::class);
 
+    Route::get('/media', [MediaController::class, 'index']);
     Route::post('/media', [MediaController::class, 'store']);
     Route::get('/media/{media}/download', [MediaController::class, 'download']);
+    Route::get('/media/{media}/thumbnail', [MediaController::class, 'thumbnail']);
     Route::delete('/media/{media}', [MediaController::class, 'destroy']);
 
     Route::get('/posts/{post}/comments', [CommentController::class, 'index']);
@@ -83,6 +88,7 @@ Route::middleware(['auth:sanctum', 'activo'])->group(function () {
         Route::put('/users/{user}/approve', [UserController::class, 'approve']);
         Route::put('/users/{user}/deactivate', [UserController::class, 'deactivate']);
         Route::put('/users/{user}/role', [UserController::class, 'changeRole']);
+        Route::put('/users/{user}/password', [UserController::class, 'resetPassword']);
 
         Route::post('/categories', [CategoryController::class, 'store']);
         Route::put('/categories/order', [CategoryController::class, 'reorder']);
