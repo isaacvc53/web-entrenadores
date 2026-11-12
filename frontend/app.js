@@ -211,11 +211,13 @@ function mostrarAcceso() {
     usuario = null;
     liberarAdjuntos();
     liberarRecursos();
+    liberarUltimos();
     olvidarFotos();
     cerrarFormPost();
     cerrarPublicacion();
     $('lista-posts').replaceChildren();
     $('lista-recursos').replaceChildren();
+    $('ultimos-archivos').replaceChildren();
     document.body.classList.remove('con-sesion');
     abrirMenu(false);
     $('vista-sesion').hidden = true;
@@ -240,6 +242,7 @@ function mostrarSesion() {
     cerrarFormPost();
     cargarCategorias();
     cargarPosts();
+    cargarUltimosArchivos();
 }
 
 // Secciones de la página, cada una con su dirección (#publicaciones, #perfil…).
@@ -1076,6 +1079,8 @@ async function cargarCategorias() {
             );
         }
 
+        pintarEtiquetasPopulares();
+
         if (usuario?.rol === 'admin') {
             pintarAdministracion();
         }
@@ -1122,6 +1127,7 @@ async function cargarPosts(siguiente = false) {
 
         $('lista-posts').append(...respuesta.data.map((post) => tarjetaDePost(post)));
         paginaPosts = respuesta.current_page;
+        $('total-posts').textContent = respuesta.total === 1 ? '1 publicación' : `${respuesta.total} publicaciones`;
         $('sin-posts').hidden = respuesta.total > 0;
         $('boton-mas-posts').hidden = respuesta.current_page >= respuesta.last_page;
     } catch (error) {
@@ -1255,6 +1261,98 @@ async function filtrarPorEtiqueta(id) {
     filtro.value = id;
     cargarPosts();
     window.scrollTo(0, 0);
+}
+
+// --- Columna de la derecha en Publicaciones ---
+
+// Las 12 etiquetas con más publicaciones, con su número. Al pulsar una se filtra por ella.
+function pintarEtiquetasPopulares() {
+    const populares = catalogo.etiquetas
+        .filter((e) => e.posts_count > 0)
+        .sort((a, b) => b.posts_count - a.posts_count || a.nombre.localeCompare(b.nombre, 'es'))
+        .slice(0, 12);
+
+    $('etiquetas-populares').replaceChildren(...populares.map((etiqueta) => {
+        const numero = document.createElement('span');
+        numero.className = 'numero';
+        numero.textContent = etiqueta.posts_count;
+
+        const boton = document.createElement('button');
+        boton.type = 'button';
+        boton.className = 'chip';
+        boton.title = `Ver las publicaciones con «${etiqueta.nombre}»`;
+        boton.append(`#${etiqueta.nombre}`, numero);
+        boton.addEventListener('click', () => filtrarPorEtiqueta(etiqueta.id));
+        return boton;
+    }));
+    $('sin-etiquetas-populares').hidden = populares.length > 0;
+}
+
+// Miniaturas de "Últimos archivos"; se liberan al volver a cargarlos.
+let urlsDeUltimos = [];
+
+function liberarUltimos() {
+    urlsDeUltimos.forEach((url) => URL.revokeObjectURL(url));
+    urlsDeUltimos = [];
+}
+
+// Los 6 últimos archivos o vídeos subidos. Una foto se amplía al pulsarla; lo demás abre su publicación.
+async function cargarUltimosArchivos() {
+    try {
+        const respuesta = await api('/media');
+        const ultimos = respuesta.data.slice(0, 6);
+
+        liberarUltimos();
+        $('ultimos-archivos').replaceChildren(...ultimos.map(miniaturaDeUltimo));
+        $('sin-ultimos-archivos').hidden = ultimos.length > 0;
+    } catch {
+        // Es solo un resumen: si falla, se deja como estaba.
+    }
+}
+
+function miniaturaDeUltimo(media) {
+    const descripcion = media.nombre_original ?? `Vídeo de «${media.post?.titulo ?? 'una publicación'}»`;
+
+    const boton = document.createElement('button');
+    boton.type = 'button';
+    boton.className = `ultimo ${media.tipo}`;
+    boton.title = descripcion;
+    boton.setAttribute('aria-label', media.tipo === 'imagen' ? `Ampliar ${descripcion}` : `Abrir la publicación de ${descripcion}`);
+
+    if (media.tipo === 'pdf') {
+        boton.textContent = 'PDF';
+    } else {
+        const imagen = document.createElement('img');
+        imagen.alt = '';
+        boton.append(imagen);
+
+        if (media.tipo === 'youtube') {
+            imagen.referrerPolicy = 'no-referrer';
+            imagen.src = `https://i.ytimg.com/vi/${encodeURIComponent(media.youtube_id)}/mqdefault.jpg`;
+        } else {
+            descargarMiniatura(media)
+                .then((blob) => {
+                    const url = URL.createObjectURL(blob);
+                    urlsDeUltimos.push(url);
+                    imagen.src = url;
+                })
+                .catch(() => imagen.remove());
+        }
+    }
+
+    boton.addEventListener('click', () => {
+        const imagen = boton.querySelector('img');
+
+        if (media.tipo === 'imagen') {
+            if (imagen) {
+                ampliarImagen(imagen, media);
+            }
+        } else {
+            abrirPublicacion(media.post_id).catch((error) => avisar(error.message, 'error'));
+        }
+    });
+
+    return boton;
 }
 
 // --- Comentarios ---
@@ -1765,6 +1863,7 @@ async function guardarPost(datos) {
     // Puede haber etiquetas nuevas, o alguna que se ha borrado al dejar de usarse.
     await cargarCategorias();
     await cargarPosts();
+    cargarUltimosArchivos();
 
     if (fallos.length) {
         avisar(`${mensaje}, pero no se pudo añadir:\n${fallos.join('\n')}`, 'error');
@@ -1790,6 +1889,7 @@ async function eliminarPost(post, boton) {
         avisar(respuesta.message);
         await cargarCategorias();
         await cargarPosts();
+        cargarUltimosArchivos();
     } catch (error) {
         avisar(error.message, 'error');
         boton.disabled = false;

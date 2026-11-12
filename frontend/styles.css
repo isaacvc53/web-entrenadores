@@ -16,7 +16,7 @@
     --pendiente-fondo: #fff3d6;
     --sombra: 0 1px 2px rgb(16 24 40 / 6%), 0 2px 8px rgb(16 24 40 / 5%);
     /* Ancho máximo del contenido: la cabecera y la página usan el mismo. */
-    --ancho: 1280px;
+    --ancho: 1440px;
 }
 
 /* Todo con esquinas rectas: ningún elemento se redondea. */
@@ -497,11 +497,132 @@ label.casilla input {
     accent-color: var(--primario);
 }
 
-/* Las publicaciones, una debajo de otra y centradas en el espacio que dejan los filtros. */
-.principal-publicaciones {
-    justify-self: center;
+/* Publicaciones en tres columnas: filtros, la lista (una publicación por fila) y el resumen.
+   En pantallas medianas el resumen no se muestra y la lista ocupa su sitio. */
+.con-resumen {
+    grid-template-columns: 260px minmax(0, 1fr) 300px;
+}
+
+.resumen {
+    position: sticky;
+    top: 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+.resumen .tarjeta {
+    margin: 0;
+}
+
+.resumen h2 {
+    margin: 0 0 12px;
+    font-size: 0.85rem;
+    color: var(--texto-suave);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+/* Etiquetas más usadas: el número va en gris al lado del nombre. */
+.resumen .chip .numero {
+    margin-left: 6px;
+    color: var(--texto-suave);
+    font-weight: 400;
+}
+
+/* Últimos archivos: tres miniaturas cuadradas por fila. */
+.ultimos-archivos {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 6px;
+}
+
+.ultimo {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    aspect-ratio: 1;
+    padding: 0;
+    overflow: hidden;
+    border: 1px solid var(--borde);
+    background: var(--fondo);
+    color: var(--primario);
+    font-weight: 700;
+}
+
+.ultimo img {
+    display: block;
     width: 100%;
-    max-width: 760px;
+    height: 100%;
+    object-fit: cover;
+    transition: transform 0.2s;
+}
+
+.ultimo:hover {
+    border-color: var(--primario);
+}
+
+.ultimo:hover img {
+    transform: scale(1.05);
+}
+
+.ultimo.imagen {
+    cursor: zoom-in;
+}
+
+/* Los vídeos llevan un triángulo de "reproducir" encima de la miniatura. */
+.ultimo.youtube::after {
+    content: '▶';
+    position: absolute;
+    right: 4px;
+    bottom: 4px;
+    padding: 1px 5px;
+    background: var(--primario);
+    color: #fff;
+    font-size: 0.65rem;
+}
+
+.ver-todos {
+    display: inline-block;
+    margin-top: 12px;
+    color: var(--primario);
+    font-size: 0.9rem;
+    font-weight: 600;
+    text-decoration: none;
+}
+
+.ver-todos:hover {
+    text-decoration: underline;
+}
+
+/* Título de la sección con el número de resultados a la derecha. */
+.fila-titulo-seccion {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 4px 12px;
+    margin-bottom: 12px;
+}
+
+.fila-titulo-seccion .titulo-seccion {
+    margin: 0;
+}
+
+.total {
+    color: var(--texto-suave);
+    font-size: 0.9rem;
+}
+
+/* Cuando no hay resultados: un recuadro en vez de una línea suelta. */
+.vacio {
+    margin: 0;
+    padding: 40px 16px;
+    border: 1px dashed var(--borde);
+    background: var(--tarjeta);
+    color: var(--texto-suave);
+    text-align: center;
 }
 
 .rejilla-posts {
@@ -510,11 +631,12 @@ label.casilla input {
     gap: 16px;
 }
 
+/* Cada publicación con una barra roja a la izquierda. */
 .post {
     min-width: 0;
-    padding: 16px;
+    padding: 18px 22px;
     border: 1px solid var(--borde);
-    border-top: 3px solid var(--primario);
+    border-left: 4px solid var(--primario);
     background: var(--tarjeta);
     box-shadow: var(--sombra);
 }
@@ -796,18 +918,21 @@ button.cerrar:hover {
     flex-wrap: wrap;
 }
 
-#vista-perfil {
-    max-width: 720px;
+/* Mi perfil: dos tarjetas, una al lado de la otra (una debajo de otra en pantallas pequeñas). */
+.perfil-columnas {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 16px;
+    align-items: start;
+}
+
+.perfil-columnas .tarjeta {
+    margin: 0;
 }
 
 #vista-perfil h3 {
-    margin: 24px 0 12px;
-    padding-top: 20px;
-    border-top: 1px solid var(--borde);
-}
-
-.form-contrasena {
-    max-width: 420px;
+    margin: 0 0 12px;
+    font-size: 1.05rem;
 }
 
 .acciones-usuario {
@@ -823,8 +948,9 @@ button.cerrar:hover {
 }
 
 .post h3 {
-    margin: 0 0 6px;
-    font-size: 1.05rem;
+    margin: 4px 0 8px;
+    font-size: 1.2rem;
+    line-height: 1.3;
     overflow-wrap: anywhere;
 }
 
@@ -1203,8 +1329,23 @@ button.chip:hover {
     min-width: 7em;
 }
 
+/* Sin sitio para tres columnas: se quita el resumen de la derecha. */
+@media (max-width: 1199px) {
+    .con-resumen {
+        grid-template-columns: 260px minmax(0, 1fr);
+    }
+
+    .resumen {
+        display: none;
+    }
+}
+
 /* Pantallas medianas: la columna lateral pasa arriba, con los filtros en fila. */
 @media (max-width: 960px) {
+    .perfil-columnas {
+        grid-template-columns: minmax(0, 1fr);
+    }
+
     .con-lateral {
         grid-template-columns: minmax(0, 1fr);
         gap: 16px;

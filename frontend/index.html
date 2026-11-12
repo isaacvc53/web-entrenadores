@@ -81,49 +81,58 @@
 
         <!-- Con sesión -->
         <section id="vista-sesion" hidden>
-            <div id="vista-perfil" class="tarjeta" hidden>
-                <h2>Mi perfil</h2>
-                <div class="perfil-foto">
-                    <span id="avatar-perfil"></span>
-                    <div>
-                        <div class="botones">
-                            <button type="button" id="boton-foto">Cambiar foto</button>
-                            <button type="button" id="boton-quitar-foto">Quitar foto</button>
+            <!-- Mi perfil: a la izquierda los datos y la foto; a la derecha, el cambio de contraseña. -->
+            <div id="vista-perfil" hidden>
+                <h2 class="titulo-seccion">Mi perfil</h2>
+                <div class="perfil-columnas">
+                    <section class="tarjeta" aria-labelledby="titulo-mis-datos">
+                        <h3 id="titulo-mis-datos">Mis datos</h3>
+                        <div class="perfil-foto">
+                            <span id="avatar-perfil"></span>
+                            <div>
+                                <div class="botones">
+                                    <button type="button" id="boton-foto">Cambiar foto</button>
+                                    <button type="button" id="boton-quitar-foto">Quitar foto</button>
+                                </div>
+                                <input type="file" id="input-foto" accept=".jpg,.jpeg,.png,.webp" hidden>
+                                <small>JPG, PNG o WebP, hasta 10 MB. Se recorta en cuadrado desde el centro.</small>
+                            </div>
                         </div>
-                        <input type="file" id="input-foto" accept=".jpg,.jpeg,.png,.webp" hidden>
-                        <small>JPG, PNG o WebP, hasta 10 MB. Se recorta en cuadrado desde el centro.</small>
-                    </div>
-                </div>
-                <dl class="datos">
-                    <dt>Nombre</dt>
-                    <dd id="dato-nombre"></dd>
-                    <dt>Email</dt>
-                    <dd id="dato-email"></dd>
-                    <dt>Rol</dt>
-                    <dd id="dato-rol"></dd>
-                </dl>
+                        <dl class="datos">
+                            <dt>Nombre</dt>
+                            <dd id="dato-nombre"></dd>
+                            <dt>Email</dt>
+                            <dd id="dato-email"></dd>
+                            <dt>Rol</dt>
+                            <dd id="dato-rol"></dd>
+                        </dl>
+                    </section>
 
-                <h3>Cambiar contraseña</h3>
-                <form id="form-contrasena" class="form-contrasena" novalidate>
-                    <label>
-                        Contraseña actual
-                        <input type="password" name="password_actual" autocomplete="current-password" required>
-                    </label>
-                    <label>
-                        Contraseña nueva
-                        <input type="password" name="password" autocomplete="new-password" minlength="8" required>
-                        <small>Mínimo 8 caracteres. Al cambiarla se cierra la sesión en tus otros dispositivos.</small>
-                    </label>
-                    <label>
-                        Repite la contraseña nueva
-                        <input type="password" name="password_confirmation" autocomplete="new-password" minlength="8" required>
-                    </label>
-                    <button type="submit" class="principal">Cambiar contraseña</button>
-                </form>
+                    <section class="tarjeta" aria-labelledby="titulo-contrasena">
+                        <h3 id="titulo-contrasena">Cambiar contraseña</h3>
+                        <form id="form-contrasena" class="form-contrasena" novalidate>
+                            <label>
+                                Contraseña actual
+                                <input type="password" name="password_actual" autocomplete="current-password" required>
+                            </label>
+                            <label>
+                                Contraseña nueva
+                                <input type="password" name="password" autocomplete="new-password" minlength="8" required>
+                                <small>Mínimo 8 caracteres. Al cambiarla se cierra la sesión en tus otros dispositivos.</small>
+                            </label>
+                            <label>
+                                Repite la contraseña nueva
+                                <input type="password" name="password_confirmation" autocomplete="new-password" minlength="8" required>
+                            </label>
+                            <button type="submit" class="principal">Cambiar contraseña</button>
+                        </form>
+                    </section>
+                </div>
             </div>
 
-            <!-- Publicaciones: a la izquierda el botón de publicar y los filtros; a la derecha, la lista. -->
-            <div id="vista-publicaciones" class="con-lateral">
+            <!-- Publicaciones: a la izquierda el botón de publicar y los filtros; en el centro, la lista;
+                 a la derecha (en pantallas anchas), las etiquetas más usadas y los últimos archivos. -->
+            <div id="vista-publicaciones" class="con-lateral con-resumen">
                 <aside class="lateral tarjeta">
                     <button type="button" id="boton-nueva" class="principal">Nueva publicación</button>
 
@@ -157,11 +166,28 @@
                 </aside>
 
                 <section class="principal-publicaciones" aria-labelledby="titulo-publicaciones">
-                    <h2 id="titulo-publicaciones" class="titulo-seccion">Publicaciones</h2>
+                    <div class="fila-titulo-seccion">
+                        <h2 id="titulo-publicaciones" class="titulo-seccion">Publicaciones</h2>
+                        <span id="total-posts" class="total" aria-live="polite"></span>
+                    </div>
                     <div id="lista-posts" class="rejilla-posts"></div>
-                    <p id="sin-posts" class="nota" hidden>No hay publicaciones.</p>
+                    <p id="sin-posts" class="vacio" hidden>No hay publicaciones con estos filtros.</p>
                     <button type="button" id="boton-mas-posts" class="cargar-mas" hidden>Cargar más</button>
                 </section>
+
+                <aside class="resumen" aria-label="Resumen">
+                    <section class="tarjeta" aria-labelledby="titulo-etiquetas-populares">
+                        <h2 id="titulo-etiquetas-populares">Etiquetas más usadas</h2>
+                        <div id="etiquetas-populares" class="etiquetas-post"></div>
+                        <p id="sin-etiquetas-populares" class="nota" hidden>Todavía no hay publicaciones con etiquetas.</p>
+                    </section>
+                    <section class="tarjeta" aria-labelledby="titulo-ultimos-archivos">
+                        <h2 id="titulo-ultimos-archivos">Últimos archivos</h2>
+                        <div id="ultimos-archivos" class="ultimos-archivos"></div>
+                        <p id="sin-ultimos-archivos" class="nota" hidden>Todavía no se ha subido ningún archivo.</p>
+                        <a href="#recursos" class="ver-todos">Ver todos en Recursos →</a>
+                    </section>
+                </aside>
             </div>
 
             <!-- Recursos: los archivos y vídeos de todas las publicaciones, juntos y con filtros. -->
