@@ -75,8 +75,11 @@ carpeta `api` que tiene al lado.
 
 - Título, tipo, equipo (opcional), temporada (si se elige equipo, se rellena con la suya),
   contenido y etiquetas.
-- Se pueden adjuntar imágenes (JPG, PNG o WebP) y PDF, hasta 10 MB cada uno, y enlaces de
-  YouTube. Máximo 10 adjuntos por publicación.
+- Se pueden adjuntar imágenes (JPG, PNG o WebP) y PDF hasta 10 MB, vídeos (MP4 o MOV) hasta
+  120 MB y enlaces de YouTube. Máximo 10 adjuntos por publicación. El servidor de OVH admite
+  128 MB por archivo; los vídeos más largos van mejor en YouTube como «No listado».
+- Los vídeos subidos se ven en la propia página y empiezan a reproducirse sin descargarlos
+  enteros. No tienen miniatura (el servidor no tiene ffmpeg).
 - Las fotos se ven con una miniatura de 640 px que el servidor crea la primera vez que se pide.
   La original solo se descarga al ampliarla.
 - Filtros: tipo, equipo, temporada (la de la publicación o la de su equipo), etiqueta,
@@ -137,10 +140,11 @@ Se puede probar con Postman o curl.
 | GET | `/posts/{id}` | Ver una publicación |
 | PUT | `/posts/{id}` | Editarla (su autor o un administrador) |
 | DELETE | `/posts/{id}` | Eliminarla, con sus archivos (su autor o un administrador) |
-| GET | `/media` | Listar adjuntos (Recursos). Los mismos filtros que `/posts` y `tipo` (imagen, pdf o youtube) |
+| GET | `/media` | Listar adjuntos (Recursos). Los mismos filtros que `/posts` y `tipo` (imagen, pdf, video o youtube) |
 | POST | `/media` | Adjuntar a una publicación (`post_id`) un archivo (`archivo`) o un enlace de YouTube (`url`) |
 | GET | `/media/{id}/download` | Descargar un archivo |
 | GET | `/media/{id}/thumbnail` | Miniatura de una imagen |
+| GET | `/media/{id}/stream?expires=…&signature=…` | Reproducir un vídeo subido. No lleva token: usa el enlace firmado de `firma_video`, que caduca a las 12 horas |
 | DELETE | `/media/{id}` | Quitar un adjunto (su autor o un administrador) |
 | GET | `/posts/{id}/comments` | Comentarios de una publicación |
 | POST | `/posts/{id}/comments` | Comentar (`contenido`) |
@@ -192,5 +196,6 @@ La carpeta de despliegue y las contraseñas no están en el repositorio.
 - Límite de intentos en el login, el registro, el cambio de contraseña y los comentarios.
 - Las sesiones caducan a los 30 días, y las caducadas se borran al volver a entrar.
 - Los archivos se validan por tamaño y por su contenido real, se guardan con un nombre
-  aleatorio y solo se descargan a través de la API, comprobando los permisos.
+  aleatorio y solo se descargan a través de la API, comprobando los permisos. Los vídeos,
+  que el reproductor no puede pedir con el token, se sirven con un enlace firmado que caduca.
 - Secretos en `.env`, nunca en el repositorio.

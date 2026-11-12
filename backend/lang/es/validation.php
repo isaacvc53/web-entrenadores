@@ -87,8 +87,8 @@ return [
             'unique' => 'Ya hay una cuenta con ese email.',
         ],
         'archivo' => [
-            'max' => 'El archivo no puede ocupar más de 10 MB.',
-            'mimes' => 'Solo se pueden subir imágenes (JPG, PNG o WebP) y PDF.',
+            'max' => 'Los vídeos no pueden ocupar más de 120 MB, y las imágenes y los PDF, más de 10 MB.',
+            'mimes' => 'Solo se pueden subir imágenes (JPG, PNG o WebP), PDF y vídeos (MP4 o MOV).',
         ],
         'password' => [
             'different' => 'La contraseña nueva debe ser distinta de la actual.',

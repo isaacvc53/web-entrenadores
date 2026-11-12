@@ -205,6 +205,7 @@
                                 <option value="">Todos los archivos</option>
                                 <option value="imagen">Imágenes</option>
                                 <option value="pdf">PDF</option>
+                                <option value="video">Vídeos subidos</option>
                                 <option value="youtube">Vídeos de YouTube</option>
                             </select>
                         </label>
@@ -296,13 +297,17 @@
                     </fieldset>
                     <label>
                         Archivos
-                        <input type="file" name="archivos" multiple accept=".jpg,.jpeg,.png,.webp,.pdf">
-                        <small>Imágenes (JPG, PNG o WebP) o PDF, hasta 10 MB cada uno. Máximo 10 adjuntos por publicación.</small>
+                        <input type="file" name="archivos" multiple accept=".jpg,.jpeg,.png,.webp,.pdf,.mp4,.m4v,.mov,video/mp4,video/quicktime">
+                        <small>Imágenes (JPG, PNG o WebP) y PDF hasta 10 MB; vídeos (MP4 o MOV) hasta 120 MB. Máximo 10 adjuntos por publicación. Para vídeos más largos, súbelos a YouTube como «No listado» y pega el enlace.</small>
                     </label>
                     <label>
                         Enlace de YouTube
                         <input type="url" name="enlace" placeholder="https://www.youtube.com/watch?v=…">
                     </label>
+                    <div id="progreso-subida" class="progreso" hidden>
+                        <span id="progreso-texto"></span>
+                        <progress id="progreso-barra" max="100" value="0"></progress>
+                    </div>
                     <div class="botones">
                         <button type="submit" class="principal" id="boton-guardar-post">Publicar</button>
                         <button type="button" id="boton-cancelar-post">Cancelar</button>

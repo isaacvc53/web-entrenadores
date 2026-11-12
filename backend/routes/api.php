@@ -38,6 +38,12 @@ Route::middleware('throttle:5,1')->group(function () {
     Route::post('/login', [AuthController::class, 'login']);
 });
 
+// Reproducir un vídeo subido. Va fuera del grupo con token porque el reproductor del navegador
+// no puede enviarlo: en su lugar, la ruta exige el enlace firmado y con caducidad que lleva cada vídeo.
+Route::get('/media/{media}/stream', [MediaController::class, 'stream'])
+    ->name('media.stream')
+    ->middleware('signed:relative');
+
 Route::middleware(['auth:sanctum', 'activo'])->group(function () {
     Route::post('/logout', [AuthController::class, 'logout']);
 

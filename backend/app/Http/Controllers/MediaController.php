@@ -13,6 +13,7 @@ use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
+use Symfony\Component\HttpFoundation\BinaryFileResponse;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
@@ -30,7 +31,7 @@ class MediaController extends Controller
     public function index(Request $request): JsonResponse
     {
         $filtros = $request->validate([
-            'tipo' => ['sometimes', Rule::in(['imagen', 'pdf', 'youtube'])],
+            'tipo' => ['sometimes', Rule::in(['imagen', 'pdf', 'video', 'youtube'])],
             'type_id' => ['sometimes', 'integer'],
             'team_id' => ['sometimes', 'integer'],
             'temporada' => ['sometimes', 'string', 'max:20'],
@@ -62,15 +63,28 @@ class MediaController extends Controller
     }
 
     /**
-     * Adjunta a una publicación un archivo subido o un enlace de YouTube.
+     * Adjunta a una publicación un archivo subido (imagen, PDF o vídeo) o un enlace de YouTube.
      */
     public function store(Request $request): JsonResponse
     {
         $request->validate([
             'post_id' => ['required', 'integer', 'exists:posts,id'],
-            'archivo' => ['required_without:url', 'prohibits:url', 'file', 'max:10240', 'mimes:jpg,jpeg,png,webp,pdf'],
+            'archivo' => [
+                'required_without:url', 'prohibits:url', 'file', 'max:'.Media::MAX_KB_VIDEO,
+                // Laravel mira el contenido real del archivo, no solo la extensión.
+                'mimes:jpg,jpeg,png,webp,pdf,mp4,m4v,mov',
+            ],
             'url' => ['required_without:archivo', 'string', 'max:500'],
         ]);
+
+        // Los vídeos pueden llegar a 120 MB; las imágenes y los PDF, solo a 10 MB.
+        $archivo = $request->file('archivo');
+
+        if ($archivo && ! $this->esVideo($archivo) && $archivo->getSize() > Media::MAX_KB_ARCHIVO * 1024) {
+            throw ValidationException::withMessages([
+                'archivo' => 'Las imágenes y los PDF no pueden ocupar más de 10 MB.',
+            ]);
+        }
 
         $post = Post::findOrFail($request->integer('post_id'));
 
@@ -99,6 +113,23 @@ class MediaController extends Controller
         abort_if($media->tipo === 'youtube' || ! Storage::exists($media->ruta), 404);
 
         return Storage::download($media->ruta, $media->nombre_original, [
+            'X-Content-Type-Options' => 'nosniff',
+        ]);
+    }
+
+    /**
+     * Envía un vídeo subido para verlo en el reproductor de la página.
+     * No pide el token: la ruta solo funciona con el enlace firmado que lleva cada vídeo
+     * ("firma_video"), que caduca. Admite peticiones por trozos (Range), así el vídeo
+     * empieza a verse sin descargarlo entero y se puede adelantar.
+     */
+    public function stream(Media $media): BinaryFileResponse
+    {
+        abort_if($media->tipo !== 'video' || ! Storage::exists($media->ruta), 404);
+
+        return response()->file(Storage::path($media->ruta), [
+            'Content-Type' => $media->mime_type,
+            'Cache-Control' => 'private, max-age='.(Media::HORAS_ENLACE_VIDEO * 3600),
             'X-Content-Type-Options' => 'nosniff',
         ]);
     }
@@ -158,12 +189,21 @@ class MediaController extends Controller
         return "media/{$media->post_id}/miniaturas/".pathinfo($media->ruta, PATHINFO_FILENAME).'.jpg';
     }
 
+    private function esVideo(UploadedFile $archivo): bool
+    {
+        return str_starts_with((string) $archivo->getMimeType(), 'video/');
+    }
+
     private function guardarArchivo(Post $post, UploadedFile $archivo): Media
     {
         $mime = $archivo->getMimeType();
 
         return $post->media()->create([
-            'tipo' => $mime === 'application/pdf' ? 'pdf' : 'imagen',
+            'tipo' => match (true) {
+                $mime === 'application/pdf' => 'pdf',
+                $this->esVideo($archivo) => 'video',
+                default => 'imagen',
+            },
             'ruta' => $archivo->store("media/{$post->id}"),
             'nombre_original' => mb_substr(basename($archivo->getClientOriginalName()), 0, 255),
             'mime_type' => $mime,

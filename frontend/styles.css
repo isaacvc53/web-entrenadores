@@ -567,6 +567,10 @@ label.casilla input {
     transform: scale(1.05);
 }
 
+.ultimo.video {
+    font-size: 1.4rem;
+}
+
 .ultimo.imagen {
     cursor: zoom-in;
 }
@@ -674,6 +678,17 @@ label.casilla input {
     width: 100%;
     height: 100%;
     object-fit: cover;
+}
+
+/* Vídeo subido que el navegador no puede reproducir: un triángulo de "reproducir". */
+.recurso-vista.video::before {
+    content: '▶';
+    color: var(--primario);
+    font-size: 2.4rem;
+}
+
+.recurso-vista.video:has(video)::before {
+    content: none;
 }
 
 /* Los PDF no tienen miniatura: un recuadro con las letras en el rojo del club. */
@@ -998,8 +1013,36 @@ button.cerrar:hover {
 }
 
 .adjunto.youtube,
+.adjunto.video,
 .adjunto.pdf {
     grid-column: 1 / -1;
+}
+
+/* Vídeo subido: ocupa todo el ancho, con fondo negro mientras carga. */
+.adjunto video,
+.recurso-vista video {
+    display: block;
+    width: 100%;
+    aspect-ratio: 16 / 9;
+    background: #000;
+}
+
+.adjunto .nota {
+    margin: 0;
+}
+
+/* Barra de progreso al subir archivos. */
+.progreso {
+    margin-bottom: 14px;
+    font-size: 0.9rem;
+}
+
+.progreso progress {
+    display: block;
+    width: 100%;
+    height: 10px;
+    margin-top: 4px;
+    accent-color: var(--primario);
 }
 
 /* La miniatura es un botón que la amplía, sin aspecto de botón. */

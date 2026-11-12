@@ -9,8 +9,9 @@ const CLAVE_TOKEN = 'portal_token';
 
 const $ = (id) => document.getElementById(id);
 
-// Tamaño máximo de un adjunto; el backend aplica el mismo límite.
+// Tamaño máximo de una foto o un PDF, y de un vídeo; el backend aplica los mismos límites.
 const MAX_BYTES_ADJUNTO = 10 * 1024 * 1024;
+const MAX_BYTES_VIDEO = 120 * 1024 * 1024;
 
 // Nombre que se muestra de cada rol.
 const NOMBRES_ROL = {
@@ -71,6 +72,68 @@ async function api(ruta, opciones) {
     const respuesta = await peticion(ruta, opciones);
 
     return respuesta.json().catch(() => ({}));
+}
+
+// Como api(), pero solo para subir un FormData, avisando del progreso (de 0 a 100).
+// Se usa XMLHttpRequest porque fetch no dice cuánto se lleva enviado.
+function subirConProgreso(ruta, datos, alProgresar) {
+    return new Promise((resolver, rechazar) => {
+        const xhr = new XMLHttpRequest();
+        const token = sessionStorage.getItem(CLAVE_TOKEN);
+
+        xhr.open('POST', API + ruta);
+        xhr.setRequestHeader('Accept', 'application/json');
+
+        if (token) {
+            xhr.setRequestHeader('Authorization', `Bearer ${token}`);
+        }
+
+        xhr.upload.addEventListener('progress', (evento) => {
+            if (evento.lengthComputable) {
+                alProgresar(Math.round((evento.loaded / evento.total) * 100));
+            }
+        });
+
+        xhr.addEventListener('load', () => {
+            let cuerpo = {};
+            try {
+                cuerpo = JSON.parse(xhr.responseText);
+            } catch {
+                // Sin cuerpo JSON: se queda vacío.
+            }
+
+            if (xhr.status >= 200 && xhr.status < 300) {
+                resolver(cuerpo);
+                return;
+            }
+
+            if (xhr.status === 401 && token) {
+                sessionStorage.removeItem(CLAVE_TOKEN);
+                mostrarAcceso();
+            }
+
+            // 413: el archivo supera lo que admite el servidor.
+            rechazar(new ErrorApi(xhr.status, xhr.status === 413
+                ? 'El archivo es demasiado grande para el servidor.'
+                : mensajeDeError(xhr.status, cuerpo)));
+        });
+
+        xhr.addEventListener('error', () => {
+            rechazar(new ErrorApi(0, 'Se ha cortado la conexión mientras se subía el archivo.'));
+        });
+
+        xhr.send(datos);
+    });
+}
+
+// Un vídeo se reconoce por su tipo o, si el navegador no lo sabe, por la extensión.
+function esVideo(archivo) {
+    return archivo.type.startsWith('video/') || /\.(mp4|m4v|mov)$/i.test(archivo.name);
+}
+
+// Dirección para reproducir o descargar un vídeo subido, con su firma temporal (ver MediaController::stream).
+function urlDeVideo(media) {
+    return `${API}/media/${media.id}/stream?${media.firma_video}`;
 }
 
 async function descargarAdjunto(media) {
@@ -1321,6 +1384,9 @@ function miniaturaDeUltimo(media) {
 
     if (media.tipo === 'pdf') {
         boton.textContent = 'PDF';
+    } else if (media.tipo === 'video') {
+        // Los vídeos subidos no tienen miniatura: un triángulo de "reproducir".
+        boton.textContent = '▶';
     } else {
         const imagen = document.createElement('img');
         imagen.alt = '';
@@ -1556,6 +1622,33 @@ function elementoDeAdjunto(media, gestionable) {
         enlace.textContent = 'Ver en YouTube';
 
         caja.append(video, enlace);
+    } else if (media.tipo === 'video') {
+        // El reproductor pide el vídeo por trozos con su enlace firmado: empieza a verse
+        // sin descargarlo entero. "metadata" solo carga lo justo para la duración y la primera imagen.
+        const video = document.createElement('video');
+        video.controls = true;
+        video.preload = 'metadata';
+        video.playsInline = true;
+        video.src = urlDeVideo(media);
+        video.setAttribute('aria-label', media.nombre_original ?? 'Vídeo');
+
+        // Algunos vídeos (por ejemplo, ciertos .mov de iPhone) no se pueden ver en todos los navegadores.
+        const aviso = document.createElement('p');
+        aviso.className = 'nota';
+        aviso.hidden = true;
+        aviso.textContent = 'Este navegador no puede reproducir el vídeo. Descárgalo para verlo.';
+        video.addEventListener('error', () => {
+            video.hidden = true;
+            aviso.hidden = false;
+        });
+
+        const archivo = document.createElement('button');
+        archivo.type = 'button';
+        archivo.className = 'archivo';
+        archivo.textContent = `Descargar ${media.nombre_original} (${tamanoLegible(media.tamano)})`;
+        archivo.addEventListener('click', () => guardarAdjunto(media, archivo));
+
+        caja.append(video, aviso, archivo);
     } else if (media.tipo === 'imagen') {
         // Un <img> normal no envía el token, así que la miniatura se descarga con él
         // y se muestra desde una URL local del navegador. Al pulsarla se amplía.
@@ -1646,6 +1739,18 @@ function tamanoLegible(bytes) {
 }
 
 async function guardarAdjunto(media, boton) {
+    // Un vídeo puede pesar mucho: se descarga directamente con su enlace firmado,
+    // sin cargarlo antes entero en la memoria de la página.
+    if (media.tipo === 'video') {
+        const enlace = document.createElement('a');
+        enlace.href = urlDeVideo(media);
+        enlace.download = media.nombre_original ?? 'video.mp4';
+        enlace.target = '_blank';
+        enlace.rel = 'noopener';
+        enlace.click();
+        return;
+    }
+
     boton.disabled = true;
 
     try {
@@ -1686,9 +1791,11 @@ async function quitarAdjunto(media, boton) {
 async function subirAdjuntos(postId, archivos, enlace) {
     const fallos = [];
 
-    for (const archivo of archivos) {
-        if (archivo.size > MAX_BYTES_ADJUNTO) {
-            fallos.push(`${archivo.name}: supera los 10 MB.`);
+    for (const [posicion, archivo] of archivos.entries()) {
+        const video = esVideo(archivo);
+
+        if (archivo.size > (video ? MAX_BYTES_VIDEO : MAX_BYTES_ADJUNTO)) {
+            fallos.push(`${archivo.name}: supera los ${video ? '120' : '10'} MB.`);
             continue;
         }
 
@@ -1696,12 +1803,19 @@ async function subirAdjuntos(postId, archivos, enlace) {
         datos.append('post_id', postId);
         datos.append('archivo', archivo);
 
+        const cuantos = archivos.length > 1 ? ` (${posicion + 1} de ${archivos.length})` : '';
+        mostrarProgreso(`Subiendo «${archivo.name}»${cuantos}`, 0);
+
         try {
-            await api('/media', { metodo: 'POST', datos });
+            await subirConProgreso('/media', datos, (porcentaje) => {
+                mostrarProgreso(`Subiendo «${archivo.name}»${cuantos}`, porcentaje);
+            });
         } catch (error) {
             fallos.push(`${archivo.name}: ${error.message}`);
         }
     }
+
+    ocultarProgreso();
 
     if (enlace) {
         const datos = new FormData();
@@ -1716,6 +1830,17 @@ async function subirAdjuntos(postId, archivos, enlace) {
     }
 
     return fallos;
+}
+
+// Barra de progreso de la ventana de publicar, mientras se suben los archivos.
+function mostrarProgreso(texto, porcentaje) {
+    $('progreso-texto').textContent = `${texto}… ${porcentaje} %`;
+    $('progreso-barra').value = porcentaje;
+    $('progreso-subida').hidden = false;
+}
+
+function ocultarProgreso() {
+    $('progreso-subida').hidden = true;
 }
 
 function liberarAdjuntos() {
@@ -1757,6 +1882,7 @@ function alCerrarFormPost() {
     postEditando = null;
     $('form-post').reset();
     $('aviso-post').hidden = true;
+    ocultarProgreso();
 }
 
 // --- Etiquetas del formulario ---
@@ -1901,7 +2027,8 @@ async function eliminarPost(post, boton) {
 const NOMBRES_CLASE = {
     imagen: 'Imagen',
     pdf: 'PDF',
-    youtube: 'Vídeo',
+    video: 'Vídeo',
+    youtube: 'YouTube',
 };
 
 // Miniaturas de Recursos descargadas con el token; se liberan al volver a cargar la lista.
@@ -1992,6 +2119,22 @@ function tarjetaDeRecurso(media) {
 
     const nombre = document.createElement('h3');
     nombre.textContent = media.nombre_original ?? 'Vídeo de YouTube';
+
+    // Un vídeo subido se puede ver aquí mismo con el reproductor (la vista previa solo es decoración).
+    if (media.tipo === 'video') {
+        vista.removeAttribute('aria-hidden');
+        vista.replaceChildren();
+
+        const video = document.createElement('video');
+        video.controls = true;
+        video.preload = 'metadata';
+        video.playsInline = true;
+        video.src = urlDeVideo(media);
+        video.setAttribute('aria-label', media.nombre_original ?? 'Vídeo');
+        // Si el navegador no puede reproducirlo, se queda el recuadro con el triángulo.
+        video.addEventListener('error', () => video.remove());
+        vista.append(video, clase);
+    }
 
     const publicacion = document.createElement('p');
     publicacion.className = 'recurso-publicacion';
